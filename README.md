@@ -4,30 +4,11 @@ Track and improve your brand's place in AI answers, on AWS.
 
 AnswerShare asks AI answer engines the questions buyers ask just before they compare tools, records which brands each answer names, in what order, and which pages it cites. It shows where your site is missing or weaker than the sources the engines trust, gives you a brief and a draft for the page that fills the gap, and marks the publish date on later runs so you can see whether it changed anything.
 
+For day-to-day use, see the [user guide](GUIDE.md). The architecture diagram source is [docs/architecture.drawio](docs/architecture.drawio).
+
 > Your brand is never in the prompt. Every rate comes with its sample size. Nothing is published without a human click.
 
-```mermaid
-flowchart LR
-  U[Browser] --> CF[CloudFront]
-  CF --> S3W[(S3 web app and /guides)]
-  U --> API[HTTP API + Cognito JWT] --> APIL[api Lambda, Hono]
-  SCH[EventBridge Scheduler, weekly per workspace] --> SFN
-  APIL -->|run now| SFN
-  subgraph SFN[Step Functions run]
-    S[start-run] --> P{Parallel per engine}
-    P --> MO[Map: ask + extract, OpenAI]
-    P --> MN[Map: ask + extract, Nova]
-    P --> MP[Map: ask + extract, Sonar]
-    MO & MN & MP --> AGG[aggregate + diff]
-  end
-  AGG --> DDB[(DynamoDB single table)]
-  MO & MN & MP --> S3R[(S3 raw answers)]
-  AGG --> Q[SQS gap jobs + DLQ] --> GW[gap worker: briefs, sitemap import, drafts]
-  GW --> FETCH[SSRF-guarded fetcher]
-  SFN -. succeeded .-> EB[EventBridge] --> DG[digest Lambda] --> SES[SES email]
-  APIL --> PUB[publish Lambda] --> S3W
-  PUB -.optional.-> WP[(WordPress REST API)]
-```
+![Architecture](docs/architecture.png)
 
 ## How it works
 
