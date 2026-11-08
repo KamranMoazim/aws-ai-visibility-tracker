@@ -1,4 +1,5 @@
 import { App, Tags } from 'aws-cdk-lib';
+import { fileURLToPath } from 'node:url';
 import { AnswerShareStack } from '../lib/answershare-stack.js';
 
 try {
@@ -23,4 +24,5 @@ new AnswerShareStack(app, 'AnswerShareStack', {
   alertEmail,
   maxCallsPerRun,
   openAiModel: process.env.OPENAI_MODEL || 'gpt-5-mini',
+  clientDistPath: fileURLToPath(new URL('../../client/dist', import.meta.url)),
 });

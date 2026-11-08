@@ -2,16 +2,19 @@ import { CfnOutput, Stack, type StackProps } from 'aws-cdk-lib';
 import type { Construct } from 'constructs';
 import { Run } from './run.js';
 import { Storage } from './storage.js';
+import { Web } from './web.js';
 
 export interface AnswerShareStackProps extends StackProps {
   alertEmail: string;
   maxCallsPerRun: number;
   openAiModel: string;
+  clientDistPath: string;
 }
 
 export class AnswerShareStack extends Stack {
   readonly storage: Storage;
   readonly run: Run;
+  readonly web: Web;
 
   constructor(scope: Construct, id: string, props: AnswerShareStackProps) {
     super(scope, id, props);
@@ -23,6 +26,11 @@ export class AnswerShareStack extends Stack {
       maxCallsPerRun: props.maxCallsPerRun,
       openAiModel: props.openAiModel,
     });
+    this.web = new Web(this, 'Web', {
+      table: this.storage.table,
+      run: this.run,
+      clientDistPath: props.clientDistPath,
+    });
 
     new CfnOutput(this, 'Region', { value: this.region });
     new CfnOutput(this, 'TableName', { value: this.storage.table.tableName });
@@ -31,5 +39,13 @@ export class AnswerShareStack extends Stack {
     new CfnOutput(this, 'SchedulerRoleArn', { value: this.run.schedulerRole.roleArn });
     new CfnOutput(this, 'AskFunctionName', { value: this.run.ask.functionName });
     new CfnOutput(this, 'StartRunFunctionName', { value: this.run.startRun.functionName });
+    new CfnOutput(this, 'UserPoolId', { value: this.web.userPool.userPoolId });
+    new CfnOutput(this, 'UserPoolClientId', { value: this.web.userPoolClient.userPoolClientId });
+    new CfnOutput(this, 'ApiUrl', { value: this.web.httpApi.apiEndpoint });
+    new CfnOutput(this, 'ApiFunctionName', { value: this.web.api.functionName });
+    new CfnOutput(this, 'SiteBucketName', { value: this.web.siteBucket.bucketName });
+    new CfnOutput(this, 'SiteUrl', {
+      value: `https://${this.web.distribution.distributionDomainName}`,
+    });
   }
 }

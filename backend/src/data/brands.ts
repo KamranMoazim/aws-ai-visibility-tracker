@@ -1,5 +1,6 @@
 import { UpdateCommand } from '@aws-sdk/lib-dynamodb';
-import { brandSk, workspacePk } from '../core/keys.js';
+import { BRAND_PREFIX, brandSk, workspacePk } from '../core/keys.js';
+import { queryAll } from './query.js';
 import { documentClient, TABLE_NAME } from '../core/table.js';
 
 export interface UntrackedSighting {
@@ -41,4 +42,31 @@ export async function recordUntrackedBrands(
     }
   }
   return newSlugs;
+}
+
+export interface UntrackedBrand {
+  slug: string;
+  name: string;
+  mentions: number;
+  promptIds: string[];
+  firstSeen: string;
+  lastSeen: string;
+}
+
+export async function listUntrackedBrands(workspaceId: string): Promise<UntrackedBrand[]> {
+  const items = await queryAll<Record<string, unknown>>({
+    TableName: TABLE_NAME,
+    KeyConditionExpression: 'PK = :pk AND begins_with(SK, :prefix)',
+    ExpressionAttributeValues: { ':pk': workspacePk(workspaceId), ':prefix': BRAND_PREFIX },
+  });
+  return items
+    .map((item) => ({
+      slug: item.slug as string,
+      name: item.name as string,
+      mentions: item.mentions as number,
+      promptIds: [...((item.promptIds as Set<string> | undefined) ?? [])],
+      firstSeen: item.firstSeen as string,
+      lastSeen: item.lastSeen as string,
+    }))
+    .sort((left, right) => right.mentions - left.mentions);
 }

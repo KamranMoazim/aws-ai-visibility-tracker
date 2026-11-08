@@ -1,4 +1,11 @@
-import { GetCommand, PutCommand, TransactWriteCommand } from '@aws-sdk/lib-dynamodb';
+import {
+  DeleteCommand,
+  GetCommand,
+  PutCommand,
+  TransactWriteCommand,
+  UpdateCommand,
+} from '@aws-sdk/lib-dynamodb';
+import { isConditionFailure } from '../core/dynamo-errors.js';
 import {
   COMPETITOR_PREFIX,
   competitorSk,
@@ -11,7 +18,7 @@ import {
 } from '../core/keys.js';
 import { OWN_BRAND_ID, type TrackedBrand } from '../core/matcher.js';
 import type { CompetitorRecord, PromptRecord, Workspace } from '../core/schemas.js';
-import { documentClient, TABLE_NAME } from '../core/table.js';
+import { documentClient, GSI1, TABLE_NAME } from '../core/table.js';
 import { queryAll } from './query.js';
 
 const strip = <T extends object>(item: Record<string, unknown>): T => {
@@ -107,4 +114,74 @@ export function trackedBrandsOf(
       aliases: competitor.aliases,
     })),
   ];
+}
+
+export async function listWorkspacesForUser(userId: string): Promise<Workspace[]> {
+  const items = await queryAll<Record<string, unknown>>({
+    TableName: TABLE_NAME,
+    IndexName: GSI1,
+    KeyConditionExpression: 'GSI1PK = :pk',
+    ExpressionAttributeValues: { ':pk': userPk(userId) },
+  });
+  return items.map((item) => strip<Workspace>(item));
+}
+
+export async function getPrompt(
+  workspaceId: string,
+  promptId: string,
+): Promise<PromptRecord | undefined> {
+  const { Item } = await documentClient.send(
+    new GetCommand({
+      TableName: TABLE_NAME,
+      Key: { PK: workspacePk(workspaceId), SK: promptSk(promptId) },
+    }),
+  );
+  return Item ? strip<PromptRecord>(Item) : undefined;
+}
+
+export async function deletePrompt(workspaceId: string, promptId: string): Promise<void> {
+  await documentClient.send(
+    new DeleteCommand({
+      TableName: TABLE_NAME,
+      Key: { PK: workspacePk(workspaceId), SK: promptSk(promptId) },
+    }),
+  );
+}
+
+export async function claimManualRun(
+  workspaceId: string,
+  now: Date,
+  windowMs: number,
+): Promise<boolean> {
+  try {
+    await documentClient.send(
+      new UpdateCommand({
+        TableName: TABLE_NAME,
+        Key: { PK: workspacePk(workspaceId), SK: META_SK },
+        UpdateExpression: 'SET lastManualRunAt = :now',
+        ConditionExpression:
+          'attribute_exists(SK) AND (attribute_not_exists(lastManualRunAt) OR lastManualRunAt < :cutoff)',
+        ExpressionAttributeValues: {
+          ':now': now.toISOString(),
+          ':cutoff': new Date(now.getTime() - windowMs).toISOString(),
+        },
+      }),
+    );
+    return true;
+  } catch (error) {
+    if (isConditionFailure(error)) {
+      return false;
+    }
+    throw error;
+  }
+}
+
+export async function releaseManualRun(workspaceId: string): Promise<void> {
+  await documentClient.send(
+    new UpdateCommand({
+      TableName: TABLE_NAME,
+      Key: { PK: workspacePk(workspaceId), SK: META_SK },
+      UpdateExpression: 'REMOVE lastManualRunAt',
+    }),
+  );
 }

@@ -36,6 +36,7 @@ async function runAndWait(workspaceId: string, maxCalls?: number): Promise<strin
 }
 
 const workspaceId = `test-${newId()}`;
+const promptIdOf = (text: string) => hashId(`${workspaceId}:${text}`);
 const createdAt = new Date().toISOString();
 await putWorkspace({
   ...DEMO_SETTINGS,
@@ -55,7 +56,7 @@ const prompts = [
   { text: `Forced failure prompt ${FAKE_FAIL_MARKER}`, stage: 'problem' as const, active: true },
 ];
 for (const prompt of prompts) {
-  await putPrompt(workspaceId, { ...prompt, promptId: hashId(prompt.text), createdAt });
+  await putPrompt(workspaceId, { ...prompt, promptId: promptIdOf(prompt.text), createdAt });
 }
 const runIds: string[] = [];
 
@@ -90,7 +91,7 @@ try {
   );
 
   const replay = answers.find((answer) => answer.status === 'extracted')!;
-  const prompt = prompts.find((candidate) => hashId(candidate.text) === replay.promptId)!;
+  const prompt = prompts.find((candidate) => promptIdOf(candidate.text) === replay.promptId)!;
   const invoke = await lambda.send(
     new InvokeCommand({
       FunctionName: outputs.AskFunctionName,

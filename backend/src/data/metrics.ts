@@ -6,10 +6,12 @@ import {
   workspaceMetricsSk,
   workspacePk,
 } from '../core/keys.js';
-import { ratesOf, type Counts } from '../core/metrics.js';
-import { documentClient, TABLE_NAME } from '../core/table.js';
+import { ratesOf, topEntries, type Counts } from '../core/metrics.js';
+import { documentClient, GSI1, TABLE_NAME } from '../core/table.js';
+import { queryAll } from './query.js';
 
 const BATCH_SIZE = 25;
+const TOP_DOMAINS = 20;
 const MAX_BATCH_ATTEMPTS = 6;
 
 export async function batchPut(items: Record<string, unknown>[]): Promise<void> {
@@ -52,8 +54,39 @@ export async function writeRollups(
       engine,
       at: startedAt,
       ...counts,
+      citedDomains: topEntries(counts.citedDomains, TOP_DOMAINS),
       ...ratesOf(counts),
     };
   });
   await batchPut(items);
+}
+
+export interface TrendPoint extends Counts {
+  runId: string;
+  engine: string;
+  at: string;
+  mentionRate: number | null;
+  firstMentionRate: number | null;
+  averagePosition: number | null;
+  shareOfVoice: number | null;
+  recommendedRate: number | null;
+  citationRate: number | null;
+}
+
+export async function listWorkspaceTrend(
+  workspaceId: string,
+  from: string,
+  to: string,
+): Promise<TrendPoint[]> {
+  const items = await queryAll<Record<string, unknown>>({
+    TableName: TABLE_NAME,
+    IndexName: GSI1,
+    KeyConditionExpression: 'GSI1PK = :pk AND GSI1SK BETWEEN :from AND :to',
+    ExpressionAttributeValues: {
+      ':pk': workspaceMetricsPk(workspaceId),
+      ':from': from,
+      ':to': `${to}~`,
+    },
+  });
+  return items.map(({ PK, SK, GSI1PK, GSI1SK, ...point }) => point as unknown as TrendPoint);
 }

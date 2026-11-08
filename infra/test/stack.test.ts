@@ -1,5 +1,8 @@
 import { App } from 'aws-cdk-lib';
 import { Template } from 'aws-cdk-lib/assertions';
+import { mkdtempSync, writeFileSync } from 'node:fs';
+import { tmpdir } from 'node:os';
+import { join } from 'node:path';
 import { AnswerShareStack } from '../lib/answershare-stack.js';
 
 let passed = 0;
@@ -13,11 +16,14 @@ function check(name: string, ok: boolean, extra?: unknown): void {
   console.log(`${ok ? 'PASS' : 'FAIL'} ${name}${ok ? '' : ' ' + JSON.stringify(extra)}`);
 }
 
+const distPath = mkdtempSync(join(tmpdir(), 'answershare-dist-'));
+writeFileSync(join(distPath, 'index.html'), '<div id="root"></div>');
 const stack = new AnswerShareStack(new App(), 'TestStack', {
   env: { account: '111111111111', region: 'us-east-1' },
   alertEmail: 'alerts@example.com',
   maxCallsPerRun: 300,
   openAiModel: 'gpt-5-mini',
+  clientDistPath: distPath,
 });
 const template = Template.fromStack(stack);
 const resources = template.toJSON().Resources as Record<
@@ -99,7 +105,7 @@ const appFunctions = ofType('AWS::Lambda::Function').filter(
 );
 check(
   'app functions run node 24 on arm64',
-  appFunctions.length === 5 &&
+  appFunctions.length === 6 &&
     appFunctions.every(
       (lambdaFunction) =>
         lambdaFunction.Properties.Runtime === 'nodejs24.x' &&
@@ -171,15 +177,18 @@ check(
   dataStatements.length > 0 && dataStatements.every((statement) => statement.Resource !== '*'),
   dataStatements,
 );
+const rawPuts = withAction(/^s3:PutObject/).filter((statement) =>
+  json(statement.Resource).includes('RawBucket'),
+);
 check(
-  'ask may only put raw/ objects',
-  withAction(/^s3:PutObject/).every((statement) => json(statement.Resource).includes('/raw/*')),
-  withAction(/^s3:PutObject/),
+  'raw bucket writes limited to raw/',
+  rawPuts.length === 1 && json(rawPuts[0].Resource).includes('/raw/*'),
+  rawPuts,
 );
 const invokeModel = withAction(/^bedrock:InvokeModel$/);
 check(
   'bedrock invoke scoped to nova 2 lite',
-  invokeModel.length === 2 &&
+  invokeModel.length === 3 &&
     invokeModel.every(
       (statement) =>
         json(statement.Resource).includes('nova-2-lite-v1:0') && statement.Resource !== '*',
@@ -208,17 +217,98 @@ const [scheduleGroup] = ofType('AWS::Scheduler::ScheduleGroup');
 check('schedule group', scheduleGroup?.Properties.Name === 'answershare', scheduleGroup);
 const startExecution = withAction(/^states:StartExecution$/);
 check(
-  'scheduler may start only the run state machine',
-  startExecution.length === 1 && json(startExecution[0].Resource).includes('StateMachine'),
+  'only the scheduler and api may start runs, on the run state machine only',
+  startExecution.length === 2 &&
+    startExecution.every((statement) => json(statement.Resource).includes('StateMachine')),
   startExecution,
+);
+const scheduleWrites = withAction(/^scheduler:/);
+check(
+  'api manages schedules in its own group only',
+  scheduleWrites.length === 1 &&
+    json(scheduleWrites[0].Resource).includes(':schedule/answershare/*'),
+  scheduleWrites,
+);
+const passRole = withAction(/^iam:PassRole$/);
+check(
+  'api may pass only the scheduler role',
+  passRole.length === 1 && json(passRole[0].Resource).includes('SchedulerRole'),
+  passRole,
+);
+
+const [pool] = ofType('AWS::Cognito::UserPool');
+check(
+  'user pool is invite only with 12 char passwords',
+  pool?.Properties.AdminCreateUserConfig?.AllowAdminCreateUserOnly === true &&
+    pool?.Properties.Policies?.PasswordPolicy?.MinimumLength === 12 &&
+    pool?.DeletionPolicy === 'Delete',
+  pool?.Properties,
+);
+const [poolClient] = ofType('AWS::Cognito::UserPoolClient');
+check(
+  'web client is public and hides user existence',
+  !poolClient?.Properties.GenerateSecret &&
+    poolClient?.Properties.PreventUserExistenceErrors === 'ENABLED',
+  poolClient?.Properties,
+);
+const routes = ofType('AWS::ApiGatewayV2::Route').map((route) => route.Properties);
+const proxyRoutes = routes.filter((route) => route.RouteKey.endsWith('/{proxy+}'));
+check(
+  'api routes need a cognito jwt, without ANY or OPTIONS',
+  proxyRoutes.length === 4 &&
+    proxyRoutes.every((route) => route.AuthorizationType === 'JWT') &&
+    !routes.some((route) => /^(ANY|OPTIONS) /.test(route.RouteKey)),
+  routes.map((route) => route.RouteKey),
+);
+check(
+  'health is the only open route',
+  routes
+    .filter((route) => route.AuthorizationType !== 'JWT')
+    .map((route) => route.RouteKey)
+    .join() === 'GET /health',
+);
+const [httpApi] = ofType('AWS::ApiGatewayV2::Api');
+const corsOrigins = json(httpApi?.Properties.CorsConfiguration?.AllowOrigins);
+check(
+  'cors limited to the site and local dev',
+  corsOrigins.includes('http://localhost:5173') &&
+    corsOrigins.includes('Distribution') &&
+    !corsOrigins.includes('"*"') &&
+    !corsOrigins.includes('https://*'),
+  httpApi?.Properties.CorsConfiguration,
+);
+const [siteHeaders] = ofType('AWS::CloudFront::ResponseHeadersPolicy');
+const csp = json(siteHeaders?.Properties);
+check(
+  'strict csp on the site',
+  csp.includes("frame-ancestors 'none'") &&
+    csp.includes("script-src 'self'") &&
+    !csp.includes('unsafe-inline'),
+  siteHeaders?.Properties,
+);
+check(
+  'site served through origin access control',
+  ofType('AWS::CloudFront::OriginAccessControl').length === 1 &&
+    ofType('AWS::S3::Bucket').every(
+      (candidate) =>
+        candidate.Properties.PublicAccessBlockConfiguration?.BlockPublicPolicy === true,
+    ),
 );
 
 const outputs = Object.keys(template.toJSON().Outputs ?? {});
 check(
   'outputs for scripts',
-  ['Region', 'TableName', 'RawBucketName', 'StateMachineArn', 'SchedulerRoleArn'].every((name) =>
-    outputs.includes(name),
-  ),
+  [
+    'Region',
+    'TableName',
+    'RawBucketName',
+    'StateMachineArn',
+    'SchedulerRoleArn',
+    'UserPoolId',
+    'UserPoolClientId',
+    'ApiUrl',
+    'SiteUrl',
+  ].every((name) => outputs.includes(name)),
   outputs,
 );
 

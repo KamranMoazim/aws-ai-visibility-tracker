@@ -3,7 +3,7 @@ import { loadOutputs } from './outputs.js';
 import { DEMO_COMPETITORS, DEMO_PROMPTS, DEMO_SETTINGS } from './demo-data.js';
 
 loadOutputs();
-const { hashId, newId, slugify } = await import('../src/core/ids.js');
+const { newId, slugify } = await import('../src/core/ids.js');
 const { findBrandTerms } = await import('../src/core/prompts.js');
 const { WorkspaceSettings } = await import('../src/core/schemas.js');
 const { upsertWeeklySchedule } = await import('../src/core/schedules.js');
@@ -37,7 +37,7 @@ for (const prompt of DEMO_PROMPTS.slice(0, Number(values.prompts))) {
   if (named.length) {
     throw new Error(`demo prompt names the brand: ${prompt.text}`);
   }
-  await putPrompt(workspaceId, { ...prompt, promptId: hashId(prompt.text), createdAt });
+  await putPrompt(workspaceId, { ...prompt, promptId: newId(), createdAt });
 }
 if (settings.schedule === 'weekly') {
   await upsertWeeklySchedule(workspaceId);

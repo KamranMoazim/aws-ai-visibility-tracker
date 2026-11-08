@@ -1,7 +1,7 @@
-import { GetCommand, PutCommand, UpdateCommand } from '@aws-sdk/lib-dynamodb';
+import { GetCommand, PutCommand, QueryCommand, UpdateCommand } from '@aws-sdk/lib-dynamodb';
 import { isConditionFailure } from '../core/dynamo-errors.js';
-import { answerIndexSk, answerSk, promptIndexPk, runPk } from '../core/keys.js';
-import { documentClient, TABLE_NAME, ttlAfterDays } from '../core/table.js';
+import { ANSWER_PREFIX, answerIndexSk, answerSk, promptIndexPk, runPk } from '../core/keys.js';
+import { documentClient, GSI1, TABLE_NAME, ttlAfterDays } from '../core/table.js';
 import type { WorkItem } from '../core/work.js';
 import type { Citation } from '../engines/types.js';
 import type { Disagreement, Mention } from '../extraction/merge.js';
@@ -159,4 +159,43 @@ export async function listRunAnswers(runId: string): Promise<AnswerRecord[]> {
     KeyConditionExpression: 'PK = :pk',
     ExpressionAttributeValues: { ':pk': runPk(runId) },
   });
+}
+
+export async function listPromptAnswers(
+  workspaceId: string,
+  promptId: string,
+  runId?: string,
+): Promise<AnswerRecord[]> {
+  let answers: AnswerRecord[];
+  if (runId) {
+    answers = await queryAll<AnswerRecord>({
+      TableName: TABLE_NAME,
+      KeyConditionExpression: 'PK = :pk AND begins_with(SK, :prefix)',
+      ExpressionAttributeValues: {
+        ':pk': runPk(runId),
+        ':prefix': `${ANSWER_PREFIX}${promptId}#`,
+      },
+    });
+  } else {
+    const { Items = [] } = await documentClient.send(
+      new QueryCommand({
+        TableName: TABLE_NAME,
+        IndexName: GSI1,
+        KeyConditionExpression: 'GSI1PK = :pk',
+        ExpressionAttributeValues: { ':pk': promptIndexPk(promptId) },
+        ScanIndexForward: false,
+        Limit: 60,
+      }),
+    );
+    const latest = (Items[0] as AnswerRecord | undefined)?.runId;
+    answers = (Items as AnswerRecord[]).filter((answer) => answer.runId === latest);
+  }
+  return answers
+    .filter((answer) => answer.workspaceId === workspaceId)
+    .map((answer) => {
+      const { PK, SK, GSI1PK, GSI1SK, expiresAt, ...rest } = answer as AnswerRecord &
+        Record<string, unknown>;
+      return rest as AnswerRecord;
+    })
+    .sort((left, right) => left.engine.localeCompare(right.engine) || left.sample - right.sample);
 }

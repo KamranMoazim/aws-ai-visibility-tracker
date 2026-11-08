@@ -8,6 +8,10 @@ export interface StackOutputs {
   SchedulerRoleArn: string;
   AskFunctionName: string;
   StartRunFunctionName: string;
+  UserPoolId: string;
+  UserPoolClientId: string;
+  ApiUrl: string;
+  SiteUrl: string;
 }
 
 export function loadOutputs(): StackOutputs {

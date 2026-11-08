@@ -1,0 +1,51 @@
+import { useState } from 'react';
+import { currentSession, signOut, type Session } from './auth';
+import { AuthScreen } from './AuthScreen';
+import { Home } from './Home';
+import { PromptPage } from './PromptPage';
+import { href, useHashRoute } from './route';
+import { SettingsPage } from './SettingsPage';
+import { WorkspacePage } from './WorkspacePage';
+
+export function App() {
+  const [session, setSession] = useState<Session | null>(currentSession());
+  const route = useHashRoute();
+
+  if (!session) {
+    return <AuthScreen onSignedIn={setSession} />;
+  }
+
+  return (
+    <div className="shell">
+      <header className="topbar">
+        <a className="wordmark" href={href.home()}>
+          Answer<span>Share</span>
+        </a>
+        <div className="topbar-user">
+          <span>{session.email}</span>
+          <button
+            className="link-button"
+            onClick={() => {
+              signOut();
+              setSession(null);
+            }}
+          >
+            Sign out
+          </button>
+        </div>
+      </header>
+      <main className="page">
+        {route.page === 'home' && <Home />}
+        {route.page === 'workspace' && <WorkspacePage workspaceId={route.workspaceId} />}
+        {route.page === 'settings' && <SettingsPage workspaceId={route.workspaceId} />}
+        {route.page === 'prompt' && (
+          <PromptPage
+            workspaceId={route.workspaceId}
+            promptId={route.promptId}
+            runId={route.runId}
+          />
+        )}
+      </main>
+    </div>
+  );
+}

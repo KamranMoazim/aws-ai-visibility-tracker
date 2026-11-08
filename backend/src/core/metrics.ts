@@ -1,6 +1,6 @@
 import type { Mention } from '../extraction/merge.js';
 import { ALL_ENGINES, ALL_PROMPTS } from './keys.js';
-import { citesDomain, OWN_BRAND_ID } from './matcher.js';
+import { citesDomain, hostOf, OWN_BRAND_ID } from './matcher.js';
 
 export interface AnswerForMetrics {
   promptId: string;
@@ -20,6 +20,7 @@ export interface Counts {
   cited: number;
   trackedMentions: number;
   brandMentions: Record<string, number>;
+  citedDomains: Record<string, number>;
 }
 
 export interface Rates {
@@ -52,6 +53,7 @@ const emptyCounts = (): Counts => ({
   cited: 0,
   trackedMentions: 0,
   brandMentions: {},
+  citedDomains: {},
 });
 
 export const rollupKey = (promptId: string, engine: string) => `${promptId}|${engine}`;
@@ -86,10 +88,9 @@ export function computeRollups(
     const mentions = answer.mentions ?? [];
     const own = mentions.find((mention) => mention.brandId === OWN_BRAND_ID);
     const tracked = mentions.filter((mention) => mention.brandId);
-    const cited = citesDomain(
-      (answer.citations ?? []).map((citation) => citation.url),
-      ownDomain,
-    );
+    const urls = (answer.citations ?? []).map((citation) => citation.url);
+    const cited = citesDomain(urls, ownDomain);
+    const domains = new Set(urls.map(hostOf).filter((host): host is string => Boolean(host)));
     for (const counts of targets) {
       counts.answers++;
       counts.trackedMentions += tracked.length;
@@ -109,6 +110,9 @@ export function computeRollups(
       if (cited) {
         counts.cited++;
       }
+      for (const domain of domains) {
+        counts.citedDomains[domain] = (counts.citedDomains[domain] ?? 0) + 1;
+      }
     }
   }
   return rollups;
@@ -116,6 +120,14 @@ export function computeRollups(
 
 const ratio = (numerator: number, denominator: number) =>
   denominator > 0 ? Math.round((numerator / denominator) * 10000) / 10000 : null;
+
+export function topEntries(counts: Record<string, number>, limit: number): Record<string, number> {
+  return Object.fromEntries(
+    Object.entries(counts)
+      .sort((left, right) => right[1] - left[1] || left[0].localeCompare(right[0]))
+      .slice(0, limit),
+  );
+}
 
 export function ratesOf(counts: Counts): Rates {
   return {

@@ -1,5 +1,5 @@
-import { BedrockRuntimeClient, ConverseCommand } from '@aws-sdk/client-bedrock-runtime';
 import { z } from 'zod';
+import { callTool, toolInputOf } from '../core/bedrock.js';
 import { NOVA_MODEL_ID } from '../engines/nova.js';
 import { SENTIMENTS, type ExtractedBrand } from './merge.js';
 
@@ -51,51 +51,24 @@ export interface LlmExtraction {
 }
 
 export function parseExtractionResponse(raw: unknown): ExtractedBrand[] {
-  const content =
-    (
-      raw as {
-        output?: { message?: { content?: { toolUse?: { name?: string; input?: unknown } }[] } };
-      }
-    ).output?.message?.content ?? [];
-  const toolUse = content.find((block) => block.toolUse?.name === EXTRACTION_TOOL)?.toolUse;
-  if (!toolUse) {
-    throw new Error('extraction returned no tool call');
-  }
-  return ExtractionOutput.parse(toolUse.input).brands;
+  return ExtractionOutput.parse(toolInputOf(raw, EXTRACTION_TOOL)).brands;
 }
-
-const bedrock = new BedrockRuntimeClient({ region: 'us-east-1', maxAttempts: 5 });
 
 export async function extractWithNova(
   text: string,
   modelId = process.env.EXTRACT_MODEL_ID || NOVA_MODEL_ID,
 ): Promise<LlmExtraction> {
-  const response = await bedrock.send(
-    new ConverseCommand({
-      modelId,
-      system: [{ text: SYSTEM_PROMPT }],
-      messages: [{ role: 'user', content: [{ text: `<answer>\n${text}\n</answer>` }] }],
-      inferenceConfig: { temperature: 0, maxTokens: 2000 },
-      toolConfig: {
-        tools: [
-          {
-            toolSpec: {
-              name: EXTRACTION_TOOL,
-              description: 'Record the brands named in the answer',
-              inputSchema: { json: INPUT_SCHEMA as never },
-            },
-          },
-        ],
-        toolChoice: { tool: { name: EXTRACTION_TOOL } },
-      },
-    }),
-  );
+  const result = await callTool({
+    system: SYSTEM_PROMPT,
+    user: `<answer>\n${text}\n</answer>`,
+    toolName: EXTRACTION_TOOL,
+    description: 'Record the brands named in the answer',
+    schema: INPUT_SCHEMA,
+    modelId,
+  });
   return {
-    brands: parseExtractionResponse(response),
-    model: modelId,
-    usage: {
-      inputTokens: response.usage?.inputTokens ?? 0,
-      outputTokens: response.usage?.outputTokens ?? 0,
-    },
+    brands: ExtractionOutput.parse(result.input).brands,
+    model: result.model,
+    usage: result.usage,
   };
 }

@@ -81,6 +81,11 @@ check(
   total.brandMentions,
 );
 check('engine rollup across prompts', rollups.get(rollupKey(ALL_PROMPTS, 'openai'))?.answers === 4);
+check(
+  'cited domains counted once per answer',
+  total.citedDomains['acmepay.io'] === 1 && Object.keys(total.citedDomains).length === 1,
+  total.citedDomains,
+);
 
 const summary = summarize(rollups);
 check(
