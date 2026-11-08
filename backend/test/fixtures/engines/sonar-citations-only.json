@@ -1,0 +1,6 @@
+{
+  "model": "sonar",
+  "usage": { "prompt_tokens": 10, "completion_tokens": 50 },
+  "citations": ["https://stripe.com/invoicing", "not-a-url"],
+  "choices": [{ "message": { "content": "Stripe Invoicing works well." } }]
+}

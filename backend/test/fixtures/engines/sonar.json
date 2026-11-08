@@ -1,0 +1,33 @@
+{
+  "id": "fixture",
+  "model": "sonar",
+  "created": 1762600000,
+  "usage": {
+    "prompt_tokens": 14,
+    "completion_tokens": 230,
+    "total_tokens": 244,
+    "search_context_size": "low"
+  },
+  "citations": [
+    "https://www.forbes.com/advisor/business/best-international-payment-services/",
+    "https://www.payoneer.com/resources/invoicing/"
+  ],
+  "search_results": [
+    {
+      "title": "Best International Payment Services",
+      "url": "https://www.forbes.com/advisor/business/best-international-payment-services/",
+      "date": "2026-09-14"
+    },
+    { "title": "Invoicing with Payoneer", "url": "https://www.payoneer.com/resources/invoicing/" }
+  ],
+  "choices": [
+    {
+      "index": 0,
+      "finish_reason": "stop",
+      "message": {
+        "role": "assistant",
+        "content": "Payoneer and Wise are the most common choices [1][2]."
+      }
+    }
+  ]
+}

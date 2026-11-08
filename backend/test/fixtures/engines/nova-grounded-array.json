@@ -1,0 +1,19 @@
+{
+  "output": {
+    "message": {
+      "content": [
+        {
+          "text": "Recent options include Payoneer.",
+          "citationsContent": [
+            {
+              "location": {
+                "web": { "url": "https://www.payoneer.com/", "domain": "payoneer.com" }
+              }
+            }
+          ]
+        }
+      ]
+    }
+  },
+  "usage": { "inputTokens": 100, "outputTokens": 20 }
+}

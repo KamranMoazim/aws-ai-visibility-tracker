@@ -1,0 +1,16 @@
+{
+  "name": "aws-ai-visibility-tracker",
+  "private": true,
+  "version": "0.1.0",
+  "scripts": {
+    "install:all": "npm --prefix infra install && npm --prefix backend install",
+    "infra:deploy": "npm --prefix infra run deploy",
+    "infra:destroy": "npm --prefix infra run destroy",
+    "infra:test": "npm --prefix infra test",
+    "backend:test": "npm --prefix backend test",
+    "typecheck": "npm --prefix infra run typecheck && npm --prefix backend run typecheck",
+    "format": "npx prettier@3.6.2 --write infra/bin infra/lib infra/test backend/src backend/test backend/scripts",
+    "keys:set": "scripts/set-keys.sh",
+    "run:now": "npm --prefix backend run run-now --"
+  }
+}

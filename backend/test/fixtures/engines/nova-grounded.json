@@ -1,0 +1,35 @@
+{
+  "output": {
+    "message": {
+      "role": "assistant",
+      "content": [
+        { "text": "Wise Business is a popular choice for international invoicing" },
+        {
+          "citationsContent": {
+            "content": [{ "text": ", with multi-currency accounts" }],
+            "citations": [
+              {
+                "title": "Wise Business",
+                "location": {
+                  "web": { "url": "https://wise.com/us/business/", "domain": "wise.com" }
+                }
+              },
+              {
+                "location": {
+                  "web": {
+                    "url": "https://www.nerdwallet.com/article/small-business/international-invoicing",
+                    "domain": "nerdwallet.com"
+                  }
+                }
+              }
+            ]
+          }
+        },
+        { "text": ". Payoneer is another option." }
+      ]
+    }
+  },
+  "stopReason": "end_turn",
+  "usage": { "inputTokens": 1520, "outputTokens": 96, "totalTokens": 1616 },
+  "metrics": { "latencyMs": 2400 }
+}

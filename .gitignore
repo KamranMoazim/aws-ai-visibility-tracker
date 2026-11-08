@@ -1,0 +1,11 @@
+node_modules
+dist
+cdk.out
+cdk-outputs.json
+.env
+*.log
+.DS_Store
+AnswerShare.md
+client/public/config.json
+docs/superpowers/
+.playwright-mcp

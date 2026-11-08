@@ -1,0 +1,56 @@
+{
+  "id": "resp_fixture",
+  "object": "response",
+  "model": "gpt-5-mini-2025-08-07",
+  "output": [
+    { "type": "reasoning", "id": "rs_1", "summary": [] },
+    {
+      "type": "web_search_call",
+      "id": "ws_1",
+      "status": "completed",
+      "action": { "type": "search", "query": "easiest way to invoice international clients" }
+    },
+    {
+      "type": "web_search_call",
+      "id": "ws_2",
+      "status": "completed",
+      "action": { "type": "search", "query": "international invoicing fees comparison" }
+    },
+    {
+      "type": "message",
+      "id": "msg_1",
+      "role": "assistant",
+      "status": "completed",
+      "content": [
+        {
+          "type": "output_text",
+          "text": "The easiest options are Wise Business and Payoneer. Wise has low conversion fees, while PayPal is simpler but costlier.",
+          "annotations": [
+            {
+              "type": "url_citation",
+              "start_index": 0,
+              "end_index": 40,
+              "url": "https://wise.com/us/business/invoicing?utm_source=openai",
+              "title": "Wise Business invoicing"
+            },
+            {
+              "type": "url_citation",
+              "start_index": 41,
+              "end_index": 80,
+              "url": "https://www.nerdwallet.com/article/small-business/international-invoicing",
+              "title": "How to invoice international clients"
+            },
+            {
+              "type": "url_citation",
+              "start_index": 81,
+              "end_index": 100,
+              "url": "https://wise.com/us/business/invoicing?utm_source=openai",
+              "title": "Wise Business invoicing"
+            }
+          ]
+        }
+      ]
+    }
+  ],
+  "usage": { "input_tokens": 8123, "output_tokens": 412, "total_tokens": 8535 }
+}
