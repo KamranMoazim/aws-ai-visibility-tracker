@@ -21,6 +21,7 @@ writeFileSync(join(distPath, 'index.html'), '<div id="root"></div>');
 const stack = new AnswerShareStack(new App(), 'TestStack', {
   env: { account: '111111111111', region: 'us-east-1' },
   alertEmail: 'alerts@example.com',
+  digestFrom: 'digest@example.com',
   maxCallsPerRun: 300,
   openAiModel: 'gpt-5-mini',
   clientDistPath: distPath,
@@ -106,7 +107,7 @@ const appFunctions = ofType('AWS::Lambda::Function').filter(
 );
 check(
   'app functions run node 24 on arm64',
-  appFunctions.length === 8 &&
+  appFunctions.length === 9 &&
     appFunctions.every(
       (lambdaFunction) =>
         lambdaFunction.Properties.Runtime === 'nodejs24.x' &&
@@ -411,6 +412,46 @@ check(
     json(deployment?.Properties.Exclude).includes(pattern),
   ),
   deployment?.Properties.Exclude,
+);
+
+const [budget] = ofType('AWS::Budgets::Budget');
+check(
+  'monthly budget of $30 with actual and forecast alerts',
+  budget?.Properties.Budget.BudgetLimit.Amount === 30 &&
+    budget?.Properties.NotificationsWithSubscribers.length === 2 &&
+    json(budget?.Properties).includes('alerts@example.com'),
+  budget?.Properties,
+);
+const alarms = ofType('AWS::CloudWatch::Alarm');
+check(
+  'alarms on dlq, failed runs and api/publisher errors, all notifying',
+  alarms.length === 4 && alarms.every((alarm) => alarm.Properties.AlarmActions?.length === 1),
+  alarms.map((alarm) => alarm.Properties.AlarmDescription),
+);
+check(
+  'run failure alarm sums failed, timed out and aborted',
+  alarms.some((alarm) =>
+    (json(alarm.Properties.Metrics) ?? '').includes('failed + timedOut + aborted'),
+  ),
+);
+const [subscription] = ofType('AWS::SNS::Subscription');
+check(
+  'alerts go to the alert email',
+  subscription?.Properties.Protocol === 'email' &&
+    subscription?.Properties.Endpoint === 'alerts@example.com',
+);
+const [rule] = ofType('AWS::Events::Rule');
+check(
+  'digest fires when a run succeeds',
+  json(rule?.Properties.EventPattern).includes('SUCCEEDED') &&
+    json(rule?.Properties.EventPattern).includes('Step Functions Execution Status Change'),
+  rule?.Properties,
+);
+const sesSends = withAction(/^ses:/);
+check(
+  'digest sends only from its identity',
+  sesSends.length === 1 && json(sesSends[0].Resource).includes('identity/digest@example.com'),
+  sesSends,
 );
 
 const outputs = Object.keys(template.toJSON().Outputs ?? {});

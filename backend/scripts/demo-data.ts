@@ -4,6 +4,7 @@ export const DEMO_SETTINGS: Omit<WorkspaceSettings, 'engines' | 'samples' | 'sch
   name: 'Acme Pay demo',
   brand: { name: 'Acme Pay', domain: 'acmepay.io', aliases: ['AcmePay'] },
   country: 'US',
+  digest: true,
 };
 
 export const DEMO_COMPETITORS: Competitor[] = [

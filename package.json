@@ -18,6 +18,9 @@
     "run:now": "npm --prefix backend run run-now --",
     "seed": "npm --prefix backend run seed --",
     "run:start": "npm --prefix backend run start-run --",
-    "test:live": "npm --prefix backend run test:live"
+    "test:live": "npm --prefix backend run test:live",
+    "smoke": "npm --prefix backend run smoke --",
+    "dlq:redrive": "scripts/redrive.sh",
+    "teardown": "scripts/teardown.sh"
   }
 }

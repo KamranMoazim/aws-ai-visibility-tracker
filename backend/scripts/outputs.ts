@@ -13,6 +13,7 @@ export interface StackOutputs {
   ApiUrl: string;
   SiteUrl: string;
   GapQueueUrl: string;
+  GapDlqUrl: string;
 }
 
 export function loadOutputs(): StackOutputs {

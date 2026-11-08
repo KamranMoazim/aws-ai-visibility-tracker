@@ -126,5 +126,11 @@ export async function handler(event: AggregateEvent) {
     `run done run=${run.runId} answers=${answers.length} extracted=${extracted} failed=${failed} ` +
       `gaps=${gapCandidates.length} queued=${gapJobsQueued} newBrands=${newBrands.length}`,
   );
-  return { runId: run.runId, extracted, failed, gapCandidates: gapCandidates.length };
+  return {
+    runId: run.runId,
+    workspaceId: workspace.workspaceId,
+    extracted,
+    failed,
+    gapCandidates: gapCandidates.length,
+  };
 }

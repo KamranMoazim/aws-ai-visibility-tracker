@@ -43,6 +43,7 @@ export const WorkspaceSettings = z.object({
   samples: z.number().int().min(1).max(5).default(3),
   schedule: z.enum(['weekly', 'off']).default('weekly'),
   wordpress: WordPressSettings.optional(),
+  digest: z.boolean().default(true),
 });
 export type WorkspaceSettings = z.infer<typeof WorkspaceSettings>;
 

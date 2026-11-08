@@ -80,6 +80,7 @@ try {
     engines: ['fake'],
     samples: 1,
     schedule: 'off',
+    digest: false,
     competitors: [],
   });
   workspaceId = created.body.workspace.workspaceId;

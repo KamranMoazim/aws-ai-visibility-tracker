@@ -22,6 +22,7 @@ Tags.of(app).add('project', 'answershare');
 new AnswerShareStack(app, 'AnswerShareStack', {
   env: { account: process.env.CDK_DEFAULT_ACCOUNT, region: 'us-east-1' },
   alertEmail,
+  digestFrom: process.env.DIGEST_FROM || alertEmail,
   maxCallsPerRun,
   openAiModel: process.env.OPENAI_MODEL || 'gpt-5-mini',
   clientDistPath: fileURLToPath(new URL('../../client/dist', import.meta.url)),

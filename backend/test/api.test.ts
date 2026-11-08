@@ -72,6 +72,7 @@ try {
     engines: ['fake'],
     samples: 2,
     schedule: 'weekly',
+    digest: false,
     competitors: DEMO_COMPETITORS,
   });
   const workspaceId = created.body.workspace?.workspaceId as string;
@@ -247,6 +248,7 @@ try {
     engines: ['fake'],
     samples: 1,
     schedule: 'off',
+    digest: false,
   });
   check(
     'settings saved and schedule turned off',
