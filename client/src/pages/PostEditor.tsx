@@ -1,13 +1,19 @@
 import { useEffect, useMemo, useState } from 'react';
-import { api, type CrawlerCheck, type FaqPair, type Post } from './api';
-import { dateTime } from './format';
-import { markdownToHtml } from './markdown';
-import { href } from './route';
-import { useAction } from './useAction';
-import { useLoad } from './useLoad';
+import { href } from '../app/routes';
+import { useWorkspace } from '../app/workspace';
+import { ErrorText, Loading, Notice } from '../components/Feedback';
+import { PageHeader } from '../components/PageHeader';
+import { WithPlaceholders } from '../components/Placeholders';
+import { Panel } from '../components/Panel';
+import { api, type CrawlerCheck, type FaqPair, type Post } from '../lib/api';
+import { dateTime } from '../lib/format';
+import { useAction } from '../lib/hooks/useAction';
+import { useLoad } from '../lib/hooks/useLoad';
+import { markdownToHtml, markPlaceholders } from '../lib/markdown';
 
 const PLACEHOLDER = /\[fill in[^\]]*\]/gi;
 const POLL_MS = 4000;
+type Target = 'hosted' | 'wordpress';
 
 function countPlaceholders(post: Pick<Post, 'title' | 'description' | 'markdown' | 'faq'>): number {
   return [
@@ -20,32 +26,32 @@ function countPlaceholders(post: Pick<Post, 'title' | 'description' | 'markdown'
     .reduce((sum, count) => sum + count, 0);
 }
 
-function CrawlerWarning({ check }: { check: CrawlerCheck | null }) {
+function CrawlerStatus({ check }: { check: CrawlerCheck | null }) {
   if (!check) {
     return null;
   }
   const blocked = check.crawlers.filter((crawler) => !crawler.allowed);
   if (!blocked.length) {
     return (
-      <p className="ok small">
-        {check.domain} lets {check.crawlers.map((crawler) => crawler.agent).join(', ')} read{' '}
+      <p className="crawler-ok">
+        AI search crawlers can read {check.domain}
         {check.path}.
       </p>
     );
   }
   return (
-    <p className="banner warn">
+    <Notice tone="warn">
       robots.txt on {check.domain} blocks {blocked.map((crawler) => crawler.agent).join(' and ')}.
       AI search cannot cite this page until that changes.
-    </p>
+    </Notice>
   );
 }
 
-export function PostPage({ workspaceId, postId }: { workspaceId: string; postId: string }) {
+export function PostEditor({ postId }: { postId: string }) {
+  const { workspaceId, workspace } = useWorkspace();
   const loaded = useLoad(() => api.post(workspaceId, postId), [workspaceId, postId]);
-  const view = useLoad(() => api.workspace(workspaceId), [workspaceId]);
   const [draft, setDraft] = useState<Post | null>(null);
-  const [target, setTarget] = useState<'hosted' | 'wordpress'>('hosted');
+  const [target, setTarget] = useState<Target>('hosted');
   const [crawler, setCrawler] = useState<CrawlerCheck | null>(null);
   const save = useAction();
   const publish = useAction();
@@ -73,42 +79,40 @@ export function PostPage({ workspaceId, postId }: { workspaceId: string; postId:
       .catch(() => setCrawler(null));
   }, [workspaceId, target]);
 
-  const preview = useMemo(() => (draft ? markdownToHtml(draft.markdown).html : ''), [draft]);
+  const preview = useMemo(
+    () => (draft ? markPlaceholders(markdownToHtml(draft.markdown).html) : ''),
+    [draft],
+  );
+  const back = { href: href.posts(workspaceId), label: 'All pages' };
 
   if (loaded.error) {
-    return <p className="error">{loaded.error}</p>;
+    return <ErrorText message={loaded.error} />;
   }
   if (!loaded.data || !draft) {
-    return <p className="muted">Loading</p>;
+    return <Loading />;
   }
   if (generating) {
     return (
       <div>
-        <a className="back" href={href.posts(workspaceId)}>
-          All pages
-        </a>
-        <h1>{draft.title}</h1>
-        <p className="banner running" role="status">
+        <PageHeader back={back} title={draft.title} />
+        <Notice tone="info">
           Writing the draft from the gap brief. This takes about a minute.
-        </p>
+        </Notice>
       </div>
     );
   }
   if (draft.status === 'failed') {
     return (
       <div>
-        <a className="back" href={href.posts(workspaceId)}>
-          All pages
-        </a>
-        <h1>{draft.title}</h1>
-        <p className="banner warn">The draft could not be written: {draft.error}</p>
+        <PageHeader back={back} title={draft.title} />
+        <Notice tone="error">The draft could not be written: {draft.error}</Notice>
       </div>
     );
   }
 
   const placeholders = countPlaceholders(draft);
   const dirty = JSON.stringify(draft) !== JSON.stringify(loaded.data.post);
-  const wordpress = view.data?.workspace.wordpress;
+  const wordpress = workspace.wordpress;
   const update = (change: Partial<Post>) => setDraft({ ...draft, ...change });
   const updateFaq = (index: number, change: Partial<FaqPair>) =>
     update({
@@ -134,74 +138,70 @@ export function PostPage({ workspaceId, postId }: { workspaceId: string; postId:
   }
 
   return (
-    <div className="post-page">
-      <a className="back" href={href.posts(workspaceId)}>
-        All pages
-      </a>
-      <div className="page-head">
-        <div>
-          <h1>{draft.title}</h1>
-          <p className="muted">
-            {draft.status === 'published' && draft.publishedUrl ? (
-              <>
-                Published {draft.publishedAt ? dateTime(draft.publishedAt) : ''} at{' '}
-                <a href={draft.publishedUrl} target="_blank" rel="noopener noreferrer">
-                  {draft.publishedUrl}
-                </a>
-              </>
-            ) : (
-              'Draft'
-            )}
-            {draft.gapId && (
-              <>
-                {' '}
-                from <a href={href.gap(workspaceId, draft.gapId)}>this gap</a>
-              </>
-            )}
-          </p>
-        </div>
-        <div className="actions">
-          <button disabled={save.busy || !dirty} onClick={saveDraft}>
+    <div className="editor-page">
+      <PageHeader
+        back={back}
+        title={draft.title || 'Untitled page'}
+        description={
+          draft.status === 'published' && draft.publishedUrl ? (
+            <>
+              Published {draft.publishedAt ? dateTime(draft.publishedAt) : ''} at{' '}
+              <a href={draft.publishedUrl} target="_blank" rel="noopener noreferrer">
+                {draft.publishedUrl}
+              </a>
+            </>
+          ) : (
+            <>
+              Draft
+              {draft.gapId && (
+                <>
+                  {' '}
+                  from <a href={href.gap(workspaceId, draft.gapId)}>this gap</a>
+                </>
+              )}
+            </>
+          )
+        }
+        actions={
+          <button className="button" disabled={save.busy || !dirty} onClick={saveDraft}>
             {dirty ? 'Save draft' : 'Saved'}
           </button>
-        </div>
-      </div>
-      {save.error && <p className="error">{save.error}</p>}
+        }
+      />
+      <ErrorText message={save.error} />
 
       <div className="editor">
-        <div className="editor-fields stack">
-          <label>
-            Title
+        <div className="editor-fields">
+          <label className="field">
+            <span>Title</span>
             <input
               value={draft.title}
               onChange={(event) => update({ title: event.target.value })}
             />
           </label>
-          <div className="row">
-            <label>
-              Address
-              <span className="slug-field">
-                <span className="muted">/guides/</span>
-                <input
-                  value={draft.slug}
-                  onChange={(event) => update({ slug: event.target.value })}
-                />
-              </span>
-            </label>
-          </div>
-          <label>
-            Description
+          <label className="field">
+            <span>Address</span>
+            <span className="input-prefix">
+              <span>/guides/</span>
+              <input
+                value={draft.slug}
+                onChange={(event) => update({ slug: event.target.value })}
+              />
+            </span>
+          </label>
+          <label className="field">
+            <span>Description</span>
             <textarea
               rows={2}
               value={draft.description}
               onChange={(event) => update({ description: event.target.value })}
             />
           </label>
-          <label>
-            Page body (Markdown)
+          <label className="field">
+            <span>Page body, in Markdown</span>
             <textarea
               className="markdown-input"
-              rows={22}
+              rows={24}
               value={draft.markdown}
               onChange={(event) => update({ markdown: event.target.value })}
             />
@@ -211,27 +211,28 @@ export function PostPage({ workspaceId, postId }: { workspaceId: string; postId:
             {draft.faq.map((pair, index) => (
               <div key={index} className="faq-pair">
                 <input
-                  aria-label="Question"
+                  aria-label={`Question ${index + 1}`}
                   value={pair.question}
                   onChange={(event) => updateFaq(index, { question: event.target.value })}
                 />
                 <textarea
-                  aria-label="Answer"
+                  aria-label={`Answer ${index + 1}`}
                   rows={2}
                   value={pair.answer}
                   onChange={(event) => updateFaq(index, { answer: event.target.value })}
                 />
                 <button
-                  className="link-button danger"
+                  className="link-button link-danger"
                   onClick={() =>
                     update({ faq: draft.faq.filter((_, position) => position !== index) })
                   }
                 >
-                  Remove
+                  Remove question
                 </button>
               </div>
             ))}
             <button
+              className="button"
               disabled={draft.faq.length >= 10}
               onClick={() => update({ faq: [...draft.faq, { question: '', answer: '' }] })}
             >
@@ -239,33 +240,31 @@ export function PostPage({ workspaceId, postId }: { workspaceId: string; postId:
             </button>
           </fieldset>
         </div>
-        <aside className="editor-side">
-          <section className="section publish-box">
-            <h2>Publish</h2>
+
+        <aside className="editor-rail">
+          <Panel title="Publish" className="publish-panel">
             {placeholders > 0 ? (
-              <p className="banner warn">
-                {placeholders} [fill in] placeholder{placeholders === 1 ? '' : 's'} left. Replace
-                each with a fact you can stand behind before publishing.
+              <p className="placeholder-count">
+                <strong>{placeholders}</strong> [fill in]{' '}
+                {placeholders === 1 ? 'placeholder' : 'placeholders'} left. Replace each with a fact
+                you can stand behind.
               </p>
             ) : (
-              <p className="ok small">No placeholders left.</p>
+              <p className="crawler-ok">Every fact is filled in.</p>
             )}
-            <label>
-              Where
-              <select
-                value={target}
-                onChange={(event) => setTarget(event.target.value as 'hosted' | 'wordpress')}
-              >
-                <option value="hosted">Hosted /guides page</option>
+            <label className="field">
+              <span>Where</span>
+              <select value={target} onChange={(event) => setTarget(event.target.value as Target)}>
+                <option value="hosted">Hosted page under /guides</option>
                 <option value="wordpress" disabled={!wordpress}>
-                  WordPress{wordpress ? ` (${wordpress.postStatus})` : ' (add it in settings)'}
+                  WordPress{wordpress ? ` (${wordpress.postStatus})` : ', set it up in settings'}
                 </option>
               </select>
             </label>
-            <CrawlerWarning check={crawler} />
-            {publish.error && <p className="error">{publish.error}</p>}
+            <CrawlerStatus check={crawler} />
+            <ErrorText message={publish.error} />
             <button
-              className="primary"
+              className="button button-primary"
               disabled={publish.busy || placeholders > 0}
               onClick={publishNow}
             >
@@ -273,7 +272,7 @@ export function PostPage({ workspaceId, postId }: { workspaceId: string; postId:
             </button>
             {draft.status === 'published' && draft.target === 'hosted' && (
               <button
-                className="link-button danger"
+                className="link-button link-danger"
                 disabled={publish.busy}
                 onClick={() =>
                   publish.run(async () => {
@@ -285,15 +284,16 @@ export function PostPage({ workspaceId, postId }: { workspaceId: string; postId:
                 Unpublish
               </button>
             )}
-          </section>
-          <section className="section preview">
-            <h2>Preview</h2>
-            <article className="preview-body">
+          </Panel>
+          <Panel title="Preview" className="preview-panel">
+            <article className="preview">
               <h1>{draft.title}</h1>
-              <p className="muted">{draft.description}</p>
+              <p className="preview-lede">
+                <WithPlaceholders text={draft.description} />
+              </p>
               <div dangerouslySetInnerHTML={{ __html: preview }} />
             </article>
-          </section>
+          </Panel>
         </aside>
       </div>
     </div>

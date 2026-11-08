@@ -1,5 +1,5 @@
 import type { ReactNode } from 'react';
-import type { Brand, Competitor, Mention } from './api';
+import type { Brand, Competitor, Mention } from '../lib/api';
 
 type Kind = 'own' | 'competitor' | 'untracked';
 

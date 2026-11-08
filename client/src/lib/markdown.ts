@@ -122,3 +122,9 @@ export function markdownToHtml(markdown: string): { html: string; headings: Head
   flushList();
   return { html: out.join('\n'), headings };
 }
+
+const PLACEHOLDER_HTML = /\[fill in[^\]<]*\]/gi;
+
+export function markPlaceholders(html: string): string {
+  return html.replace(PLACEHOLDER_HTML, (match) => `<mark class="placeholder">${match}</mark>`);
+}

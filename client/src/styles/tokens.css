@@ -1,0 +1,74 @@
+:root {
+  color-scheme: light;
+  --canvas: #eef1f4;
+  --surface: #ffffff;
+  --surface-sunk: #f6f8fa;
+  --ink: #1c2433;
+  --ink-2: #4a5568;
+  --ink-3: #6b7587;
+  --line: #dde2e9;
+  --line-strong: #c3cad5;
+  --action: #2448b8;
+  --action-hover: #1b3891;
+  --action-ink: #ffffff;
+  --action-soft: #e6ecfb;
+  --highlight: #ffdd3c;
+  --highlight-ink: #1c2433;
+  --competitor-bg: #e2e8f6;
+  --competitor-line: #2448b8;
+  --untracked-line: #8a93a3;
+  --gap: #b42318;
+  --gap-soft: #fdecea;
+  --good: #1f7a4a;
+  --warn-bg: #fff6d6;
+  --warn-line: #e3b505;
+  --info-bg: #e6ecfb;
+  --error-bg: #fdecea;
+  --series-openai: #2a78d6;
+  --series-nova: #eb6834;
+  --series-sonar: #1baf7a;
+  --series-fake: #eda100;
+  --sans: 'Instrument Sans Variable', system-ui, -apple-system, 'Segoe UI', sans-serif;
+  --serif: 'Newsreader Variable', Charter, 'Iowan Old Style', Georgia, serif;
+  --radius-small: 4px;
+  --radius: 8px;
+  --sidebar: 232px;
+}
+
+@media (prefers-color-scheme: dark) {
+  :root:where(:not([data-theme='light'])) {
+    color-scheme: dark;
+    --canvas: #121620;
+    --surface: #1a2030;
+    --surface-sunk: #161b28;
+    --ink: #e8ecf3;
+    --ink-2: #b5bdcc;
+    --ink-3: #8d96a7;
+    --line: #2a3243;
+    --line-strong: #3b4558;
+    --action: #8fb0f5;
+    --action-hover: #b0c8fa;
+    --action-ink: #0f1626;
+    --action-soft: #233258;
+    --highlight: #7a6400;
+    --highlight-ink: #fff8d6;
+    --competitor-bg: #26334f;
+    --competitor-line: #8fb0f5;
+    --untracked-line: #7d8696;
+    --gap: #f0857b;
+    --gap-soft: #3a1f1f;
+    --good: #5cc28a;
+    --warn-bg: #3a3214;
+    --warn-line: #a88a12;
+    --info-bg: #1f2a45;
+    --error-bg: #3a1f1f;
+    --series-openai: #3987e5;
+    --series-nova: #d95926;
+    --series-sonar: #199e70;
+    --series-fake: #c98500;
+  }
+}
+
+:root[data-theme='dark'] {
+  color-scheme: dark;
+}

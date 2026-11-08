@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useRef, useState, type PointerEvent } from 'react';
-import type { TrendPoint } from './api';
-import { engineClass, engineLabel, fraction, percent, shortDate } from './format';
+import type { TrendPoint } from '../lib/api';
+import { engineClass, engineLabel, fraction, percent, shortDate } from '../lib/format';
 
 export interface ChartMarker {
   at: string;
@@ -9,7 +9,13 @@ export interface ChartMarker {
 
 const HEIGHT = 240;
 const MARGIN = { top: 16, right: 84, bottom: 28, left: 40 };
-const Y_TICKS = [0, 0.25, 0.5, 0.75, 1];
+const TICK_COUNT = 4;
+const MARKER_LABEL_WIDTH = 480;
+
+export function axisMax(rates: number[]): number {
+  const highest = Math.max(0, ...rates);
+  return Math.min(1, Math.max(0.2, Math.ceil((highest + 0.02) * 10) / 10));
+}
 
 function useWidth<T extends HTMLElement>() {
   const ref = useRef<T>(null);
@@ -67,7 +73,11 @@ export function TrendChart({
     (runs.length === 1
       ? innerWidth / 2
       : ((new Date(iso).getTime() - minTime) / span) * innerWidth);
-  const yOf = (rate: number) => MARGIN.top + (1 - rate) * innerHeight;
+  const yMax = axisMax(
+    points.map((point) => point.mentionRate).filter((rate): rate is number => rate !== null),
+  );
+  const ticks = Array.from({ length: TICK_COUNT + 1 }, (_, index) => (yMax * index) / TICK_COUNT);
+  const yOf = (rate: number) => MARGIN.top + (1 - rate / yMax) * innerHeight;
 
   function onMove(event: PointerEvent<SVGRectElement>) {
     const box = event.currentTarget.getBoundingClientRect();
@@ -137,7 +147,7 @@ export function TrendChart({
             role="img"
             aria-label="Mention rate per engine over time"
           >
-            {Y_TICKS.map((tick) => (
+            {ticks.map((tick) => (
               <g key={tick} className="grid">
                 <line x1={MARGIN.left} x2={width - MARGIN.right} y1={yOf(tick)} y2={yOf(tick)} />
                 <text x={MARGIN.left - 8} y={yOf(tick)} dy="0.32em" textAnchor="end">
@@ -153,9 +163,12 @@ export function TrendChart({
                   y1={MARGIN.top}
                   y2={HEIGHT - MARGIN.bottom}
                 />
-                <text x={xOf(marker.at) + 4} y={MARGIN.top + 10}>
-                  {marker.label}
-                </text>
+                {width >= MARKER_LABEL_WIDTH && (
+                  <text x={xOf(marker.at) + 4} y={MARGIN.top + 10}>
+                    {marker.label}
+                  </text>
+                )}
+                <title>{marker.label}</title>
               </g>
             ))}
             {series.map((engine) => {
