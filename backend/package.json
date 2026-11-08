@@ -5,7 +5,7 @@
   "type": "module",
   "scripts": {
     "typecheck": "tsc --noEmit",
-    "test": "npm run test:keys && npm run test:prompts && npm run test:engines && npm run test:matcher && npm run test:metrics && npm run test:eval && npm run test:fetcher && npm run test:suggest && npm run test:gaps && npm run test:publish && npm run test:digest",
+    "test": "npm run test:keys && npm run test:prompts && npm run test:engines && npm run test:matcher && npm run test:metrics && npm run test:eval && npm run test:fetcher && npm run test:suggest && npm run test:gaps && npm run test:publish && npm run test:digest && npm run test:mcp",
     "test:keys": "tsx test/keys.test.ts",
     "test:prompts": "tsx test/prompts.test.ts",
     "test:engines": "tsx test/engines.test.ts",
@@ -18,6 +18,9 @@
     "test:gaps": "tsx test/gaps.test.ts",
     "test:publish": "tsx test/publish.test.ts",
     "test:digest": "tsx test/digest.test.ts",
+    "test:mcp": "tsx test/mcp.test.ts",
+    "test:mcp:live": "tsx test/mcp-live.test.ts",
+    "mcp-token": "tsx scripts/get-token.ts",
     "smoke": "tsx scripts/smoke.ts",
     "test:publish:live": "tsx test/publish-live.test.ts",
     "test:gaps:live": "tsx test/gaps-live.test.ts",
@@ -26,7 +29,7 @@
     "test:eval:live": "tsx test/eval.test.ts --live",
     "test:foundation": "tsx test/foundation.test.ts",
     "test:pipeline": "tsx test/pipeline.test.ts",
-    "test:live": "npm run test:foundation && npm run test:pipeline && npm run test:api && npm run test:gaps:live && npm run test:publish:live",
+    "test:live": "npm run test:foundation && npm run test:pipeline && npm run test:api && npm run test:gaps:live && npm run test:publish:live && npm run test:mcp:live",
     "seed": "tsx scripts/seed-demo.ts",
     "start-run": "tsx scripts/start-run.ts",
     "run-now": "tsx scripts/run-now.ts"

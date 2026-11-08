@@ -14,6 +14,9 @@ export interface StackOutputs {
   SiteUrl: string;
   GapQueueUrl: string;
   GapDlqUrl: string;
+  GatewayUrl: string;
+  McpClientId: string;
+  CognitoDomain: string;
 }
 
 export function loadOutputs(): StackOutputs {

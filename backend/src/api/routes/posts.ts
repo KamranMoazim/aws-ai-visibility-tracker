@@ -2,9 +2,6 @@ import { InvokeCommand, LambdaClient } from '@aws-sdk/client-lambda';
 import { Hono } from 'hono';
 import { z } from 'zod';
 import { HttpError } from '../../core/http-error.js';
-import { newId, slugify } from '../../core/ids.js';
-import { sendJobs } from '../../core/queue.js';
-import { getGap, setGapStatus } from '../../data/gaps.js';
 import {
   getPost,
   listLinks,
@@ -17,6 +14,7 @@ import { listPromptTrend } from '../../data/metrics.js';
 import { getPrompt } from '../../data/workspaces.js';
 import { checkCrawlers } from '../../publish/crawlers.js';
 import { findPlaceholders } from '../../publish/placeholders.js';
+import { NoBrief, startDraftFromGap } from '../../publish/start-draft.js';
 import type { PublishEvent, PublishResult } from '../../publish/handler.js';
 import type { AppEnv } from '../auth.js';
 import { ownedWorkspace } from '../ownership.js';
@@ -83,31 +81,18 @@ export const postRoutes = new Hono<AppEnv>();
 postRoutes.post('/:ws/gaps/:id/draft', async (context) => {
   const workspace = await ownedWorkspace(context);
   const gapId = context.req.param('id');
-  const gap = ID_PATTERN.test(gapId) ? await getGap(workspace.workspaceId, gapId) : undefined;
-  if (!gap?.brief) {
-    throw new HttpError(404, 'not_found', 'This gap has no brief to draft from');
+  if (!ID_PATTERN.test(gapId)) {
+    throw new HttpError(404, 'not_found', 'Gap not found');
   }
-  const now = new Date().toISOString();
-  const post: Post = {
-    postId: newId(),
-    workspaceId: workspace.workspaceId,
-    gapId,
-    promptIds: [gap.promptId],
-    status: 'generating',
-    title: gap.brief.title,
-    slug: slugify(gap.brief.title),
-    description: '',
-    markdown: '',
-    faq: [],
-    createdAt: now,
-    updatedAt: now,
-  };
-  await putPost(post);
-  await sendJobs(process.env.GAP_QUEUE_URL!, [
-    { type: 'draft', workspaceId: workspace.workspaceId, gapId, postId: post.postId },
-  ]);
-  await setGapStatus(workspace.workspaceId, gapId, ['open', 'failed'], 'drafted');
-  return context.json({ postId: post.postId }, 202);
+  try {
+    const post = await startDraftFromGap(workspace.workspaceId, gapId, process.env.GAP_QUEUE_URL!);
+    return context.json({ postId: post.postId }, 202);
+  } catch (error) {
+    if (error instanceof NoBrief) {
+      throw new HttpError(404, 'not_found', error.message);
+    }
+    throw error;
+  }
 });
 
 postRoutes.get('/:ws/posts', async (context) => {

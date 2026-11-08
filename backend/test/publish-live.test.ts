@@ -233,10 +233,15 @@ try {
     3000,
   );
   check('guide removed from the site', gone === true);
-  const sitemapAfter = await (
-    await fetch(`${outputs.SiteUrl}/sitemap.xml?check=${Date.now()}`)
-  ).text();
-  check('sitemap no longer lists it', !sitemapAfter.includes(url));
+  const sitemapCleared = await eventually(
+    async () => {
+      const text = await (await fetch(`${outputs.SiteUrl}/sitemap.xml?check=${Date.now()}`)).text();
+      return text.includes(url) ? undefined : true;
+    },
+    20,
+    3000,
+  );
+  check('sitemap no longer lists it', sitemapCleared === true);
 } finally {
   if (workspaceId) {
     await deletePartitions(outputs.Region, TABLE_NAME, [workspacePk(workspaceId)]);

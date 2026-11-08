@@ -1,6 +1,7 @@
 import { CfnOutput, Stack, type StackProps } from 'aws-cdk-lib';
 import type { Construct } from 'constructs';
 import { Gaps } from './gaps.js';
+import { Mcp } from './mcp.js';
 import { Monitoring } from './monitoring.js';
 import { Publish } from './publish.js';
 import { Run } from './run.js';
@@ -23,6 +24,7 @@ export class AnswerShareStack extends Stack {
   readonly web: Web;
   readonly publish: Publish;
   readonly monitoring: Monitoring;
+  readonly mcp: Mcp;
 
   constructor(scope: Construct, id: string, props: AnswerShareStackProps) {
     super(scope, id, props);
@@ -56,6 +58,12 @@ export class AnswerShareStack extends Stack {
     this.web.api.addEnvironment('PUBLISH_FUNCTION_NAME', this.publish.publisher.functionName);
     const siteUrl = `https://${this.web.distribution.distributionDomainName}`;
     this.web.api.addEnvironment('SITE_URL', siteUrl);
+    this.mcp = new Mcp(this, 'Mcp', {
+      table: this.storage.table,
+      gapQueue: this.gaps.queue,
+      userPool: this.web.userPool,
+      siteUrl,
+    });
     this.monitoring = new Monitoring(this, 'Monitoring', {
       alertEmail: props.alertEmail,
       digestFrom: props.digestFrom,
@@ -64,7 +72,11 @@ export class AnswerShareStack extends Stack {
       userPool: this.web.userPool,
       stateMachine: this.run.stateMachine,
       deadLetterQueue: this.gaps.deadLetterQueue,
-      erroringFunctions: { Api: this.web.api, Publisher: this.publish.publisher },
+      erroringFunctions: {
+        Api: this.web.api,
+        Publisher: this.publish.publisher,
+        McpTools: this.mcp.tools,
+      },
     });
 
     new CfnOutput(this, 'Region', { value: this.region });
@@ -80,6 +92,10 @@ export class AnswerShareStack extends Stack {
     new CfnOutput(this, 'PublishFunctionName', { value: this.publish.publisher.functionName });
     new CfnOutput(this, 'AlertTopicArn', { value: this.monitoring.topic.topicArn });
     new CfnOutput(this, 'DigestFunctionName', { value: this.monitoring.digest.functionName });
+    new CfnOutput(this, 'GatewayUrl', { value: this.mcp.gateway.attrGatewayUrl });
+    new CfnOutput(this, 'McpClientId', { value: this.mcp.mcpClient.userPoolClientId });
+    new CfnOutput(this, 'CognitoDomain', { value: this.mcp.domain.baseUrl() });
+    new CfnOutput(this, 'McpToolsFunctionName', { value: this.mcp.tools.functionName });
     new CfnOutput(this, 'UserPoolId', { value: this.web.userPool.userPoolId });
     new CfnOutput(this, 'UserPoolClientId', { value: this.web.userPoolClient.userPoolClientId });
     new CfnOutput(this, 'ApiUrl', { value: this.web.httpApi.apiEndpoint });

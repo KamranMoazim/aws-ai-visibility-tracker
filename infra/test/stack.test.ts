@@ -107,7 +107,7 @@ const appFunctions = ofType('AWS::Lambda::Function').filter(
 );
 check(
   'app functions run node 24 on arm64',
-  appFunctions.length === 9 &&
+  appFunctions.length === 10 &&
     appFunctions.every(
       (lambdaFunction) =>
         lambdaFunction.Properties.Runtime === 'nodejs24.x' &&
@@ -263,7 +263,9 @@ check(
     pool?.DeletionPolicy === 'Delete',
   pool?.Properties,
 );
-const [poolClient] = ofType('AWS::Cognito::UserPoolClient');
+const [poolClient] = ofType('AWS::Cognito::UserPoolClient').filter(
+  (client) => client.Properties.ClientName !== 'answershare-mcp',
+);
 check(
   'web client is public and hides user existence',
   !poolClient?.Properties.GenerateSecret &&
@@ -348,8 +350,8 @@ check(
 );
 const sends = withAction(/^sqs:SendMessage$/);
 check(
-  'aggregate and api may send gap jobs',
-  sends.length === 2 && sends.every((statement) => json(statement.Resource).includes('GapsQueue')),
+  'aggregate, api and mcp tools may send gap jobs',
+  sends.length === 3 && sends.every((statement) => json(statement.Resource).includes('GapsQueue')),
   sends,
 );
 
@@ -424,8 +426,8 @@ check(
 );
 const alarms = ofType('AWS::CloudWatch::Alarm');
 check(
-  'alarms on dlq, failed runs and api/publisher errors, all notifying',
-  alarms.length === 4 && alarms.every((alarm) => alarm.Properties.AlarmActions?.length === 1),
+  'alarms on dlq, failed runs and api/publisher/mcp errors, all notifying',
+  alarms.length === 5 && alarms.every((alarm) => alarm.Properties.AlarmActions?.length === 1),
   alarms.map((alarm) => alarm.Properties.AlarmDescription),
 );
 check(
@@ -454,6 +456,69 @@ check(
   sesSends,
 );
 
+const [gateway] = ofType('AWS::BedrockAgentCore::Gateway');
+const gatewayProps = gateway?.Properties ?? {};
+check(
+  'gateway validates cognito jwts for the mcp client only',
+  gatewayProps.AuthorizerType === 'CUSTOM_JWT' &&
+    json(gatewayProps.AuthorizerConfiguration).includes('openid-configuration') &&
+    gatewayProps.AuthorizerConfiguration?.CustomJWTAuthorizer?.AllowedClients?.length === 1,
+  gatewayProps.AuthorizerConfiguration,
+);
+check(
+  'request interceptor sees headers',
+  gatewayProps.InterceptorConfigurations?.[0]?.InterceptionPoints?.[0] === 'REQUEST' &&
+    gatewayProps.InterceptorConfigurations?.[0]?.InputConfiguration?.PassRequestHeaders === true,
+  gatewayProps.InterceptorConfigurations,
+);
+check('policy engine enforces', gatewayProps.PolicyEngineConfiguration?.Mode === 'ENFORCE');
+const [gatewayTarget] = ofType('AWS::BedrockAgentCore::GatewayTarget');
+const inlineTools =
+  gatewayTarget?.Properties.TargetConfiguration?.Mcp?.Lambda?.ToolSchema?.InlinePayload ?? [];
+check(
+  'gateway exposes five tools and no publish tool',
+  inlineTools.length === 5 &&
+    !inlineTools.some((tool: any) => /publish/i.test(tool.Name)) &&
+    !/"(Enum|Pattern|MaxLength|Default)"/i.test(json(inlineTools)),
+  inlineTools.map((tool: any) => tool.Name),
+);
+const cedarPolicies = ofType('AWS::BedrockAgentCore::Policy').map((policy) =>
+  json(policy.Properties.Definition.Cedar.Statement),
+);
+check(
+  'draft_from_gap permitted only with the answershare/draft scope',
+  cedarPolicies.length === 2 &&
+    cedarPolicies.every((statement) =>
+      statement.includes('permit(principal is AgentCore::OAuthUser'),
+    ) &&
+    cedarPolicies.filter((statement) => statement.includes('draft_from_gap')).length === 1 &&
+    Boolean(
+      cedarPolicies
+        .find((statement) => statement.includes('draft_from_gap'))
+        ?.includes('like \\"*answershare/draft*\\"'),
+    ),
+  cedarPolicies,
+);
+const [mcpClient] = ofType('AWS::Cognito::UserPoolClient').filter(
+  (client) => client.Properties.ClientName === 'answershare-mcp',
+);
+check(
+  'mcp client uses code flow without a secret',
+  json(mcpClient?.Properties.AllowedOAuthFlows) === json(['code']) &&
+    !mcpClient?.Properties.GenerateSecret &&
+    json(mcpClient?.Properties.CallbackURLs) === json(['http://localhost:8976/callback']),
+  mcpClient?.Properties,
+);
+const toolStatements = statementsOfRole('McpTools');
+check(
+  'mcp tools cannot touch buckets, bedrock or the publisher',
+  toolStatements.length > 0 &&
+    !toolStatements.some((statement) =>
+      [statement.Action].flat().some((action: string) => /^(s3|bedrock|lambda):/.test(action)),
+    ),
+  toolStatements,
+);
+
 const outputs = Object.keys(template.toJSON().Outputs ?? {});
 check(
   'outputs for scripts',
@@ -468,6 +533,9 @@ check(
     'ApiUrl',
     'SiteUrl',
     'GapQueueUrl',
+    'GatewayUrl',
+    'McpClientId',
+    'CognitoDomain',
   ].every((name) => outputs.includes(name)),
   outputs,
 );

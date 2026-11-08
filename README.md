@@ -49,6 +49,29 @@ flowchart LR
 - **No invented facts.** Briefs and drafts may only use `[fill in]` for product facts, and three layers (editor, API, publish Lambda) refuse to publish while one remains.
 - **Idle cost near zero.** No VPC, NAT, OpenSearch or provisioned capacity; on-demand DynamoDB; API keys in SSM SecureString instead of Secrets Manager; logs kept 7 days.
 
+## MCP layer
+
+AgentCore Gateway exposes AnswerShare as an MCP server, so an assistant can answer "where do we stand on invoicing prompts this week?" and start a draft. Publishing stays human-only: there is no publish tool.
+
+| Tool | Scope | What it does |
+| --- | --- | --- |
+| `list_workspaces` | `answershare/read` | Workspaces the signed-in user owns |
+| `get_visibility` | `answershare/read` | Latest run per engine and per prompt as `n/N`, changes since the previous run, weekly trend, published pages |
+| `list_gaps` | `answershare/read` | Gaps by score with the suggested page |
+| `get_gap` | `answershare/read` | Evidence and brief; third-party names and URLs are labelled as data |
+| `draft_from_gap` | `answershare/draft` | Starts a draft with `[fill in]` placeholders and returns the editor link |
+
+- The Gateway validates Cognito access tokens for the MCP client only. A request interceptor verifies the token again and writes the caller into a reserved `_caller` argument, overwriting anything the client sent, so the tools Lambda always knows who is asking.
+- A Cedar policy engine in `ENFORCE` mode permits each tool only with its scope, so a read-only token does not even see `draft_from_gap`. The tools Lambda checks the scope and workspace ownership again.
+- The tools Lambda can read and write the table and queue draft jobs; it has no access to buckets, Bedrock or the publisher.
+
+```bash
+TOKEN=$(npm run -s mcp:token)            # opens Cognito sign-in; add -- --draft for answershare/draft
+claude mcp add --transport http answershare "$GATEWAY_URL" --header "Authorization: Bearer $TOKEN"
+```
+
+Tokens last an hour. Cognito has no dynamic client registration, so `mcp:token` runs the PKCE sign-in by hand.
+
 ## Single-table design
 
 Table `answershare`, on demand, `PK`/`SK`, one GSI (`GSI1PK`/`GSI1SK`), TTL on `expiresAt`. Raw answers and page text live in S3.
@@ -86,8 +109,8 @@ Answers keep their text (capped at 20k characters), mentions and citations, and 
 
 | Folder | What |
 | --- | --- |
-| `infra/` | CDK app: one stack built from `storage`, `run`, `gaps`, `web`, `publish` and `monitoring` constructs |
-| `backend/` | Lambdas (`run-*`, `gap-worker`, `api`, `publish`, `digest`), engines, extraction, fetcher, data access, scripts and tests |
+| `infra/` | CDK app: one stack built from `storage`, `run`, `gaps`, `web`, `publish`, `mcp` and `monitoring` constructs |
+| `backend/` | Lambdas (`run-*`, `gap-worker`, `api`, `publish`, `digest`, `mcp-tools`, `mcp-interceptor`), engines, extraction, fetcher, data access, scripts and tests |
 | `client/` | React + Vite app: dashboard, who comes up, gaps, briefs, editor, settings |
 | `scripts/` | `set-keys.sh`, `redrive.sh`, `teardown.sh` |
 
@@ -118,7 +141,7 @@ Local development: `npm run client:config` writes `client/public/config.json` fr
 npm run typecheck
 npm run backend:test     # offline: keys, prompts, engines, matcher, metrics, extraction eval, fetcher, suggestions, gaps, publishing, digest
 npm run infra:test       # synthesizes the stack and asserts on the template
-npm run test:live        # against the deployed stack: foundation, pipeline, API, gaps, publishing (about $0.05 in Nova calls)
+npm run test:live        # against the deployed stack: foundation, pipeline, API, gaps, publishing, MCP (about $0.07 in Nova calls)
 ```
 
 - **Extraction eval:** 20 hand-labelled answers in `backend/test/fixtures/labelled/`. The suite fails if brand recall drops below 95% or position accuracy below 90%. `npm --prefix backend run test:eval:live` runs the same set through Nova as well.
@@ -126,6 +149,7 @@ npm run test:live        # against the deployed stack: foundation, pipeline, API
 - **Fetcher security:** private, loopback, link-local and metadata addresses, decimal and hex IP forms, IPv4-mapped IPv6, redirects to metadata IPs and non-http schemes, oversize bodies, slow pages and `robots.txt`.
 - **Pipeline (live, fake engine):** a 10-prompt run produces rates with sample sizes, forced failures do not fail the run, replaying an ask creates no duplicate, a run over the cap is refused, and gap jobs are queued.
 - **Publishing:** script, image, attribute and `javascript:` injection in Markdown, JSON-LD that parses and cannot close its script tag, sitemap, `llms.txt`, robots, slug clashes and the placeholder block; live, a guide is drafted, blocked, published to CloudFront, checked and unpublished.
+- **MCP:** no token is refused, a read token sees four tools and cannot draft, another user's token gets not found, a spoofed `_caller` is overwritten, and a draft token starts a draft that is told publishing is human-only.
 - **Infra:** arm64 and Node 24 everywhere, 7-day logs, nothing retained after `cdk destroy`, no wildcard resources on data, Bedrock and SSM scoped to exact ARNs, invite-only Cognito, JWT on every route but `/health`, strict CSP on the app and a no-script CSP on guides, DLQ and alarms.
 
 ## Costs
@@ -150,7 +174,7 @@ A default run is 25 prompts x 3 engines x 3 samples = 225 answers:
 | Step Functions, Lambda, DynamoDB, S3 | under $0.05 |
 | **Total** | **about $4.30 to $6.90** |
 
-Weekly that is roughly $19 to $30 a month; idle is about $0. A gap brief costs about $0.01 and a draft about $0.02.
+Weekly that is roughly $19 to $30 a month; idle is about $0. A gap brief costs about $0.01 and a draft about $0.02. MCP calls add AgentCore Gateway at $0.005 per 1,000 calls and Policy at $0.025 per 1,000 authorizations.
 
 **Measured.** Every run stores its measured cost (search calls and tokens per engine plus extraction), shown on the dashboard and in the digest. Recorded so far:
 
@@ -216,6 +240,7 @@ All routes except `/health` need a Cognito ID token; every workspace route retur
 | 4 | Gap finder: SQS and DLQ, gap worker, sitemap import, briefs with `[fill in]` facts, scores |
 | 5 | Publishing: drafts, editor, hosted `/guides` with JSON-LD, sitemap and `llms.txt`, WordPress, crawler check, publish markers |
 | 6 | Hardening: budget, alarms, DLQ redrive, run digest by SES, smoke run, teardown |
+| 7 | MCP: AgentCore Gateway with Cognito scopes, request interceptor and Cedar policies; read tools and draft_from_gap, no publish tool |
 
 ## Tear down
 

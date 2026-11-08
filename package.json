@@ -21,6 +21,7 @@
     "test:live": "npm --prefix backend run test:live",
     "smoke": "npm --prefix backend run smoke --",
     "dlq:redrive": "scripts/redrive.sh",
+    "mcp:token": "npm --prefix backend run --silent mcp-token --",
     "teardown": "scripts/teardown.sh"
   }
 }
