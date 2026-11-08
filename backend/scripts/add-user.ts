@@ -18,6 +18,12 @@ async function askPassword(): Promise<string> {
   if (process.env.ANSWERSHARE_PASSWORD) {
     return process.env.ANSWERSHARE_PASSWORD;
   }
+  if (!process.stdin.isTTY) {
+    console.error(
+      'no terminal to prompt on: run this in your own terminal, or set ANSWERSHARE_PASSWORD',
+    );
+    process.exit(1);
+  }
   const prompt = createInterface({ input: process.stdin, output: process.stdout });
   const password = await prompt.question('Password (12+ characters): ');
   prompt.close();

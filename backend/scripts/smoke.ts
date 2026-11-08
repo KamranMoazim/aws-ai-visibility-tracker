@@ -1,4 +1,5 @@
 import { DescribeExecutionCommand, SFNClient, StartExecutionCommand } from '@aws-sdk/client-sfn';
+import { parseArgs } from 'node:util';
 import { loadOutputs } from './outputs.js';
 import { DEMO_COMPETITORS, DEMO_PROMPTS, DEMO_SETTINGS } from './demo-data.js';
 
@@ -10,7 +11,19 @@ const { putPrompt, putWorkspace, replaceCompetitors } = await import('../src/dat
 const { deletePartitions } = await import('../test/helpers.js');
 const { TABLE_NAME } = await import('../src/core/table.js');
 
-const keep = process.argv.includes('--keep');
+const { values } = parseArgs({
+  options: {
+    engines: { type: 'string', default: 'openai,nova,sonar' },
+    keep: { type: 'boolean', default: false },
+  },
+});
+const engines = values.engines.split(',').map((engine) => engine.trim()) as (
+  | 'openai'
+  | 'nova'
+  | 'sonar'
+)[];
+const keep = values.keep;
+const PROMPTS = 5;
 const workspaceId = `smoke-${newId()}`;
 const createdAt = new Date().toISOString();
 await putWorkspace({
@@ -19,7 +32,7 @@ await putWorkspace({
   workspaceId,
   ownerId: 'smoke',
   createdAt,
-  engines: ['openai', 'nova', 'sonar'],
+  engines,
   samples: 1,
   schedule: 'off',
   digest: false,
@@ -28,7 +41,7 @@ await replaceCompetitors(
   workspaceId,
   DEMO_COMPETITORS.map((competitor) => ({ ...competitor, slug: slugify(competitor.name) })),
 );
-for (const prompt of DEMO_PROMPTS.slice(0, 5)) {
+for (const prompt of DEMO_PROMPTS.slice(0, PROMPTS)) {
   await putPrompt(workspaceId, { ...prompt, promptId: newId(), createdAt });
 }
 
@@ -36,10 +49,12 @@ const sfn = new SFNClient({ region: outputs.Region });
 const { executionArn } = await sfn.send(
   new StartExecutionCommand({
     stateMachineArn: outputs.StateMachineArn,
-    input: JSON.stringify({ workspaceId, trigger: 'test', maxCalls: 15 }),
+    input: JSON.stringify({ workspaceId, trigger: 'test', maxCalls: PROMPTS * engines.length }),
   }),
 );
-console.log(`smoke run started (5 prompts x 3 engines x 1 sample) execution=${executionArn}`);
+console.log(
+  `smoke run started (${PROMPTS} prompts x ${engines.join(',')} x 1 sample) execution=${executionArn}`,
+);
 let status = 'RUNNING';
 while (status === 'RUNNING') {
   await new Promise((resolve) => setTimeout(resolve, 5000));

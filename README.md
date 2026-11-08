@@ -105,6 +105,7 @@ npm run keys:set                        # OpenAI, Perplexity and WordPress keys 
 npm run add-user -- you@example.com     # invite-only sign in; prompts for a password
 npm run run:now -- "What's the easiest way to invoice international clients?" --engines nova --brand "Acme Pay"
 npm run smoke                           # 5 prompts x 3 engines x 1 sample against real APIs, about $0.50
+npm run smoke -- --engines nova         # Bedrock only, no third-party keys needed, about $0.19
 ```
 
 Then open the `SiteUrl` output, create a workspace, add competitors and prompts (or let it suggest some), import your sitemap and press Run now. Engines without a key are skipped and listed on the run. For free end-to-end runs, choose the `fake` engine in settings.
@@ -151,7 +152,14 @@ A default run is 25 prompts x 3 engines x 3 samples = 225 answers:
 
 Weekly that is roughly $19 to $30 a month; idle is about $0. A gap brief costs about $0.01 and a draft about $0.02.
 
-**Measured.** Every run stores its measured cost (search calls and tokens per engine plus extraction), shown on the dashboard and in the digest. Runs on the `fake` engine measured $0.00. No real-engine run has been recorded in this README yet: run `npm run smoke` once keys are set and replace this paragraph with its `cost` output.
+**Measured.** Every run stores its measured cost (search calls and tokens per engine plus extraction), shown on the dashboard and in the digest. Recorded so far:
+
+| Run | Answers | Searches | Engine | Extraction | Total |
+| --- | --- | --- | --- | --- | --- |
+| `npm run smoke -- --engines nova` (8 Nov 2026) | 5 | 6 | $0.1865 | $0.0036 | **$0.19** |
+| Any run on the `fake` engine | any | 0 | $0.00 | $0.00 | **$0.00** |
+
+That is about $0.038 per grounded Nova answer including extraction: 1.2 grounding searches per answer, about 137 input and 500 output tokens. At that rate the Nova line of a default run (75 answers) is about $2.85, slightly above the $2.45 estimate because some prompts search twice. The meter counts each `nova_grounding` tool call as one billed search; check this against your Bedrock bill. OpenAI and Sonar have not been measured yet: set their keys and run `npm run smoke`.
 
 ## API
 

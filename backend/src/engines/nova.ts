@@ -18,6 +18,7 @@ interface WebCitation {
 
 interface NovaBlock {
   text?: string;
+  toolUse?: { name?: string };
   citationsContent?: { content?: { text?: string }[]; citations?: WebCitation[] } | WebCitation[];
 }
 
@@ -42,7 +43,8 @@ export function parseNovaResponse(raw: unknown): EngineAnswer {
   const response = raw as NovaResponse;
   const texts: string[] = [];
   const citations: Citation[] = [];
-  for (const block of response.output?.message?.content ?? []) {
+  const blocks = response.output?.message?.content ?? [];
+  for (const block of blocks) {
     if (block.text) {
       texts.push(block.text);
     }
@@ -62,7 +64,7 @@ export function parseNovaResponse(raw: unknown): EngineAnswer {
     text: texts.join('').trim(),
     citations: dedupeCitations(citations),
     model: NOVA_MODEL_ID,
-    searchCalls: 1,
+    searchCalls: blocks.filter((block) => block.toolUse?.name === NOVA_GROUNDING_TOOL).length,
     usage: {
       inputTokens: response.usage?.inputTokens ?? 0,
       outputTokens: response.usage?.outputTokens ?? 0,

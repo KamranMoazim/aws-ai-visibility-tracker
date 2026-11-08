@@ -1,0 +1,204 @@
+{
+ "output": {
+  "message": {
+   "role": "assistant",
+   "content": [
+    {
+     "toolUse": {
+      "toolUseId": "tooluse_w74pvjh7Kx-i2d97yRIJMQ",
+      "name": "nova_grounding",
+      "input": {
+       "query": "What's the easiest way to invoice international clients?"
+      },
+      "type": "server_tool_use"
+     }
+    },
+    {
+     "toolResult": {
+      "toolUseId": "tooluse_w74pvjh7Kx-i2d97yRIJMQ",
+      "content": [
+       {
+        "text": "[HIDDEN]"
+       }
+      ],
+      "status": "success",
+      "type": "nova_grounding_result"
+     }
+    },
+    {
+     "text": "The easiest way to invoice international clients involves a few key steps:\n\n- **Use specialized services**: Platforms like Wise and Payoneer can simplify cross-border payments, often offering better rates and speeds than traditional bank wires"
+    },
+    {
+     "citationsContent": {
+      "citations": [
+       {
+        "location": {
+         "web": {
+          "url": "https://due.com/how-to-invoice-international-clients-and-actually-get-paid/",
+          "domain": "due.com"
+         }
+        }
+       }
+      ]
+     }
+    },
+    {
+     "text": ". \n- **Include essential details**: Ensure your invoice contains your full legal name or business name, address, tax identification number, and clear payment terms. Also include the client's full contact details and any applicable tax information"
+    },
+    {
+     "citationsContent": {
+      "citations": [
+       {
+        "location": {
+         "web": {
+          "url": "https://due.com/how-to-invoice-international-clients-and-actually-get-paid/",
+          "domain": "due.com"
+         }
+        }
+       }
+      ]
+     }
+    },
+    {
+     "citationsContent": {
+      "citations": [
+       {
+        "location": {
+         "web": {
+          "url": "https://www.remotify.co/how-to-invoice-international-clients-legally-as-a-freelancer/",
+          "domain": "remotify.co"
+         }
+        }
+       }
+      ]
+     }
+    },
+    {
+     "text": ". \n- **Choose the right currency**: Decide whether to invoice in your home currency, the client's currency, or a third-party currency. Clearly state the chosen currency and any exchange rate used"
+    },
+    {
+     "citationsContent": {
+      "citations": [
+       {
+        "location": {
+         "web": {
+          "url": "https://invoicemojo.com/invoicing/international-invoicing/",
+          "domain": "invoicemojo.com"
+         }
+        }
+       }
+      ]
+     }
+    },
+    {
+     "citationsContent": {
+      "citations": [
+       {
+        "location": {
+         "web": {
+          "url": "https://paystub.org/posts/how-to-invoice-international-clients",
+          "domain": "paystub.org"
+         }
+        }
+       }
+      ]
+     }
+    },
+    {
+     "text": ". \n- **Understand tax regulations**: Be aware of tax obligations in both your country and the client's country. This may include VAT or other international tax implications"
+    },
+    {
+     "citationsContent": {
+      "citations": [
+       {
+        "location": {
+         "web": {
+          "url": "https://invoicemojo.com/invoicing/international-invoicing/",
+          "domain": "invoicemojo.com"
+         }
+        }
+       }
+      ]
+     }
+    },
+    {
+     "citationsContent": {
+      "citations": [
+       {
+        "location": {
+         "web": {
+          "url": "https://www.remotify.co/how-to-invoice-international-clients-legally-as-a-freelancer/",
+          "domain": "remotify.co"
+         }
+        }
+       }
+      ]
+     }
+    },
+    {
+     "text": ". \n- **Provide multiple payment options**: Offer various payment methods that are convenient for your international clients, such as bank transfers, wire transfers, or online payment platforms"
+    },
+    {
+     "citationsContent": {
+      "citations": [
+       {
+        "location": {
+         "web": {
+          "url": "https://bookipi.com/bookkeeping/how-to-invoice-international-clients/",
+          "domain": "bookipi.com"
+         }
+        }
+       }
+      ]
+     }
+    },
+    {
+     "text": ". \n- **Use clear language**: While English is commonly used in business, consider translating key parts of your invoice into the client's language to build trust and avoid misunderstandings"
+    },
+    {
+     "citationsContent": {
+      "citations": [
+       {
+        "location": {
+         "web": {
+          "url": "https://bookipi.com/bookkeeping/how-to-invoice-international-clients/",
+          "domain": "bookipi.com"
+         }
+        }
+       }
+      ]
+     }
+    },
+    {
+     "text": ". \n- **Leverage invoicing software**: Use specialized software or tools designed for international invoicing. These tools can help automate many of the complexities, such as currency conversion, tax calculations, and compliance requirements"
+    },
+    {
+     "citationsContent": {
+      "citations": [
+       {
+        "location": {
+         "web": {
+          "url": "https://paystub.org/posts/how-to-invoice-international-clients",
+          "domain": "paystub.org"
+         }
+        }
+       }
+      ]
+     }
+    },
+    {
+     "text": ". \n\nBy following these steps, you can streamline the process of invoicing international clients and reduce the risk of delays or disputes."
+    }
+   ]
+  }
+ },
+ "stopReason": "end_turn",
+ "usage": {
+  "inputTokens": 134,
+  "outputTokens": 320,
+  "totalTokens": 454
+ },
+ "metrics": {
+  "latencyMs": 3026
+ }
+}

@@ -69,6 +69,22 @@ check(
   novaArray,
 );
 
+const real = parseNovaResponse(fixture('engines/nova-grounded-real.json'));
+check(
+  'real nova response: text joined, tool blocks ignored',
+  real.text.startsWith('The easiest way to invoice international clients') &&
+    !real.text.includes('[HIDDEN]'),
+  real.text.slice(0, 120),
+);
+check(
+  'real nova response: citations from separate blocks, deduped',
+  real.citations.length === 5 &&
+    real.citations.every((citation) => citation.url.startsWith('https://')),
+  real.citations,
+);
+check('real nova response: one grounding search counted', real.searchCalls === 1, real.searchCalls);
+check('synthetic nova response without tool blocks counts no searches', nova.searchCalls === 0);
+
 const engine = fakeEngine();
 const first = await engine.ask('same prompt', { sample: 0 });
 const again = await engine.ask('same prompt', { sample: 0 });
