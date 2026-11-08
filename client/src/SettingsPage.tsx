@@ -152,6 +152,69 @@ function BrandForm({
           </select>
         </label>
       </div>
+      <fieldset className="stack-fieldset">
+        <legend>WordPress (optional)</legend>
+        <p className="muted small">
+          Publish drafts to your WordPress site with an application password. Store the password
+          with scripts/set-keys.sh; it never passes through this page.
+        </p>
+        <div className="row">
+          <label>
+            Site URL
+            <input
+              value={settings.wordpress?.siteUrl ?? ''}
+              placeholder="https://blog.example.com"
+              onChange={(event) =>
+                setSettings({
+                  ...settings,
+                  wordpress: event.target.value
+                    ? {
+                        username: '',
+                        postStatus: 'draft',
+                        ...settings.wordpress,
+                        siteUrl: event.target.value,
+                      }
+                    : undefined,
+                })
+              }
+            />
+          </label>
+          <label>
+            Username
+            <input
+              value={settings.wordpress?.username ?? ''}
+              disabled={!settings.wordpress}
+              onChange={(event) =>
+                settings.wordpress &&
+                setSettings({
+                  ...settings,
+                  wordpress: { ...settings.wordpress, username: event.target.value },
+                })
+              }
+            />
+          </label>
+          <label className="narrow">
+            Post as
+            <select
+              value={settings.wordpress?.postStatus ?? 'draft'}
+              disabled={!settings.wordpress}
+              onChange={(event) =>
+                settings.wordpress &&
+                setSettings({
+                  ...settings,
+                  wordpress: {
+                    ...settings.wordpress,
+                    postStatus: event.target.value as 'draft' | 'publish',
+                  },
+                })
+              }
+            >
+              <option value="draft">Draft</option>
+              <option value="publish">Published</option>
+            </select>
+          </label>
+        </div>
+      </fieldset>
       {error && <p className="error">{error}</p>}
       {saved && <p className="ok">Saved.</p>}
       <button className="primary" disabled={busy || !settings.engines.length}>
@@ -543,6 +606,7 @@ export function SettingsPage({ workspaceId }: { workspaceId: string }) {
             engines: workspace.engines,
             samples: workspace.samples,
             schedule: workspace.schedule,
+            wordpress: workspace.wordpress,
           }}
           onSaved={view.reload}
         />

@@ -8,6 +8,7 @@ export function GapPage({ workspaceId, gapId }: { workspaceId: string; gapId: st
   const gap = useLoad(() => api.gap(workspaceId, gapId), [workspaceId, gapId]);
   const action = useAction();
   const refresh = useAction();
+  const draft = useAction();
 
   if (gap.error) {
     return <p className="error">{gap.error}</p>;
@@ -31,6 +32,20 @@ export function GapPage({ workspaceId, gapId }: { workspaceId: string; gapId: st
         Score {item.score.toFixed(2)}. Updated {dateTime(item.updatedAt)}.
       </p>
       <div className="actions">
+        {brief && (
+          <button
+            className="primary"
+            disabled={draft.busy}
+            onClick={() =>
+              draft.run(async () => {
+                const { postId } = await api.draftFromGap(workspaceId, gapId);
+                window.location.hash = href.post(workspaceId, postId);
+              })
+            }
+          >
+            Draft a page from this brief
+          </button>
+        )}
         <a className="button" href={href.prompt(workspaceId, item.promptId, item.runId)}>
           Read the answers
         </a>
@@ -71,6 +86,7 @@ export function GapPage({ workspaceId, gapId }: { workspaceId: string; gapId: st
         )}
       </div>
       {refresh.error && <p className="error">{refresh.error}</p>}
+      {draft.error && <p className="error">{draft.error}</p>}
       {refresh.busy === false && !refresh.error && refresh.ran && (
         <p className="ok">Queued. The new brief appears here in a minute or two.</p>
       )}

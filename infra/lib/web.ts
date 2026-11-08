@@ -19,6 +19,18 @@ import { SCHEDULE_GROUP } from './run.js';
 
 export const LOCAL_ORIGIN = 'http://localhost:5173';
 export const GUIDES_PREFIX = 'guides/';
+export const GENERATED_ROOT_FILES = ['sitemap.xml', 'llms.txt', 'robots.txt'];
+
+const GUIDES_REWRITE = `function handler(event) {
+  var request = event.request;
+  var uri = request.uri;
+  if (uri.endsWith('/')) {
+    request.uri = uri + 'index.html';
+  } else if (uri.lastIndexOf('.') < uri.lastIndexOf('/')) {
+    request.uri = uri + '/index.html';
+  }
+  return request;
+}`;
 
 export interface WebProps {
   table: dynamodb.ITableV2;
@@ -122,17 +134,58 @@ export class Web extends Construct {
         },
       },
     });
+    const guideHeaders = new cloudfront.ResponseHeadersPolicy(this, 'GuideHeaders', {
+      securityHeadersBehavior: {
+        contentSecurityPolicy: {
+          contentSecurityPolicy: [
+            "default-src 'none'",
+            "style-src 'unsafe-inline'",
+            'img-src https: data:',
+            "frame-ancestors 'none'",
+            "base-uri 'none'",
+            "form-action 'none'",
+          ].join('; '),
+          override: true,
+        },
+        contentTypeOptions: { override: true },
+        frameOptions: { frameOption: cloudfront.HeadersFrameOption.DENY, override: true },
+        referrerPolicy: {
+          referrerPolicy: cloudfront.HeadersReferrerPolicy.STRICT_ORIGIN_WHEN_CROSS_ORIGIN,
+          override: true,
+        },
+        strictTransportSecurity: {
+          accessControlMaxAge: Duration.days(365),
+          includeSubdomains: true,
+          override: true,
+        },
+      },
+    });
+    const guidesRewrite = new cloudfront.Function(this, 'GuidesRewrite', {
+      code: cloudfront.FunctionCode.fromInline(GUIDES_REWRITE),
+      runtime: cloudfront.FunctionRuntime.JS_2_0,
+    });
     const spaFallback = (httpStatus: number): cloudfront.ErrorResponse => ({
       httpStatus,
       responseHttpStatus: 200,
       responsePagePath: '/index.html',
       ttl: Duration.seconds(0),
     });
+    const siteOrigin = origins.S3BucketOrigin.withOriginAccessControl(this.siteBucket);
     this.distribution = new cloudfront.Distribution(this, 'Distribution', {
       defaultBehavior: {
-        origin: origins.S3BucketOrigin.withOriginAccessControl(this.siteBucket),
+        origin: siteOrigin,
         viewerProtocolPolicy: cloudfront.ViewerProtocolPolicy.REDIRECT_TO_HTTPS,
         responseHeadersPolicy: headers,
+      },
+      additionalBehaviors: {
+        [`${GUIDES_PREFIX}*`]: {
+          origin: siteOrigin,
+          viewerProtocolPolicy: cloudfront.ViewerProtocolPolicy.REDIRECT_TO_HTTPS,
+          responseHeadersPolicy: guideHeaders,
+          functionAssociations: [
+            { function: guidesRewrite, eventType: cloudfront.FunctionEventType.VIEWER_REQUEST },
+          ],
+        },
       },
       defaultRootObject: 'index.html',
       errorResponses: [spaFallback(403), spaFallback(404)],
@@ -184,7 +237,7 @@ export class Web extends Construct {
           userPoolClientId: this.userPoolClient.userPoolClientId,
         }),
       ],
-      exclude: [`${GUIDES_PREFIX}*`],
+      exclude: [`${GUIDES_PREFIX}*`, ...GENERATED_ROOT_FILES],
       distribution: this.distribution,
       distributionPaths: ['/*'],
       logGroup: logGroup(this, 'SiteDeploymentLogs'),

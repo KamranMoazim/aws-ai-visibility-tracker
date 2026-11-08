@@ -17,3 +17,4 @@ store() {
 
 store /answershare/openai-api-key "OpenAI API key"
 store /answershare/perplexity-api-key "Perplexity API key"
+store /answershare/wordpress-app-password "WordPress application password"

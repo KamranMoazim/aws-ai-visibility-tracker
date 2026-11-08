@@ -25,4 +25,5 @@ new AnswerShareStack(app, 'AnswerShareStack', {
   maxCallsPerRun,
   openAiModel: process.env.OPENAI_MODEL || 'gpt-5-mini',
   clientDistPath: fileURLToPath(new URL('../../client/dist', import.meta.url)),
+  siteName: process.env.GUIDES_SITE_NAME || 'Guides',
 });

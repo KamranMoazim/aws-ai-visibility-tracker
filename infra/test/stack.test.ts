@@ -24,6 +24,7 @@ const stack = new AnswerShareStack(new App(), 'TestStack', {
   maxCallsPerRun: 300,
   openAiModel: 'gpt-5-mini',
   clientDistPath: distPath,
+  siteName: 'Acme Pay',
 });
 const template = Template.fromStack(stack);
 const resources = template.toJSON().Resources as Record<
@@ -105,7 +106,7 @@ const appFunctions = ofType('AWS::Lambda::Function').filter(
 );
 check(
   'app functions run node 24 on arm64',
-  appFunctions.length === 7 &&
+  appFunctions.length === 8 &&
     appFunctions.every(
       (lambdaFunction) =>
         lambdaFunction.Properties.Runtime === 'nodejs24.x' &&
@@ -181,11 +182,11 @@ const rawPuts = withAction(/^s3:PutObject/).filter((statement) =>
   json(statement.Resource).includes('RawBucket'),
 );
 check(
-  'raw bucket writes limited to raw/',
-  rawPuts.length === 2 &&
+  'raw bucket writes limited to raw/, pages/ and site/',
+  rawPuts.length === 3 &&
     rawPuts.every(
       (statement) =>
-        /\/(raw|pages)\/\*/.test(json(statement.Resource)) &&
+        /\/(raw|pages|site)\/\*/.test(json(statement.Resource)) &&
         !json(statement.Resource).includes('"/*"'),
     ) &&
     rawPuts.some((statement) => json(statement.Resource).includes('/pages/*')),
@@ -208,7 +209,18 @@ check(
     json(invokeTool[0].Resource).includes('system-tool/amazon.nova_grounding'),
   invokeTool,
 );
-const ssmReads = withAction(/^ssm:/);
+const ssmReads = withAction(/^ssm:/).filter((statement) =>
+  json(statement.Resource).includes('api-key'),
+);
+const wordpressReads = withAction(/^ssm:/).filter(
+  (statement) => !json(statement.Resource).includes('api-key'),
+);
+check(
+  'wordpress password readable by the publisher only',
+  wordpressReads.length === 1 &&
+    json(wordpressReads[0].Resource).includes('parameter/answershare/wordpress-app-password'),
+  wordpressReads,
+);
 check(
   'ssm reads limited to engine keys',
   ssmReads.length === 2 &&
@@ -283,7 +295,11 @@ check(
     !corsOrigins.includes('https://*'),
   httpApi?.Properties.CorsConfiguration,
 );
-const [siteHeaders] = ofType('AWS::CloudFront::ResponseHeadersPolicy');
+const distribution = () =>
+  ofType('AWS::CloudFront::Distribution')[0]?.Properties.DistributionConfig;
+const siteHeaders = ofType('AWS::CloudFront::ResponseHeadersPolicy').find((policy) =>
+  json(policy.Properties).includes("script-src 'self'"),
+);
 const csp = json(siteHeaders?.Properties);
 check(
   'strict csp on the site',
@@ -334,6 +350,67 @@ check(
   'aggregate and api may send gap jobs',
   sends.length === 2 && sends.every((statement) => json(statement.Resource).includes('GapsQueue')),
   sends,
+);
+
+const statementsOfRole = (fragment: string) =>
+  ofType('AWS::IAM::Policy')
+    .filter((policy) => json(policy.Properties.Roles).includes(fragment))
+    .flatMap((policy) => policy.Properties.PolicyDocument.Statement as any[]);
+const publisherStatements = statementsOfRole('PublishPublisher');
+const siteWrites = publisherStatements.filter((statement) =>
+  json(statement.Resource).includes('SiteBucket'),
+);
+check(
+  'publisher writes only guides/ and generated root files on the site',
+  siteWrites.length === 1 &&
+    ['/guides/*', '/sitemap.xml', '/llms.txt', '/robots.txt'].every((path) =>
+      json(siteWrites[0].Resource).includes(path),
+    ) &&
+    !json(siteWrites[0].Resource).includes('"/*"'),
+  siteWrites,
+);
+const invalidations = publisherStatements.filter((statement) =>
+  [statement.Action].flat().includes('cloudfront:CreateInvalidation'),
+);
+check(
+  'invalidation scoped to the site distribution',
+  invalidations.length === 1 &&
+    json(invalidations[0].Resource).includes(':distribution/') &&
+    !publisherStatements.some((statement) => statement.Resource === '*'),
+  invalidations,
+);
+const invokes = statementsOfRole('WebApi').filter((statement) =>
+  [statement.Action].flat().includes('lambda:InvokeFunction'),
+);
+check(
+  'api may invoke the publisher',
+  invokes.length === 1 && json(invokes[0].Resource).includes('PublishPublisher'),
+  invokes,
+);
+const guidesBehavior = distribution()?.CacheBehaviors?.find(
+  (behavior: any) => behavior.PathPattern === 'guides/*',
+);
+check(
+  'guides behavior rewrites to index.html and has its own no-script csp',
+  guidesBehavior?.FunctionAssociations?.[0]?.EventType === 'viewer-request' &&
+    Boolean(guidesBehavior?.ResponseHeadersPolicyId),
+  guidesBehavior,
+);
+const guideCsp = ofType('AWS::CloudFront::ResponseHeadersPolicy').find((policy) =>
+  json(policy.Properties).includes("default-src 'none'"),
+);
+check(
+  'guide pages allow no scripts',
+  Boolean(guideCsp) && !json(guideCsp?.Properties).includes('script-src'),
+  guideCsp?.Properties,
+);
+const [deployment] = ofType('Custom::CDKBucketDeployment');
+check(
+  'site deploy keeps published guides and generated files',
+  ['guides/*', 'sitemap.xml', 'llms.txt', 'robots.txt'].every((pattern) =>
+    json(deployment?.Properties.Exclude).includes(pattern),
+  ),
+  deployment?.Properties.Exclude,
 );
 
 const outputs = Object.keys(template.toJSON().Outputs ?? {});

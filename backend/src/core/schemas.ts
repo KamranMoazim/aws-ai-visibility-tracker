@@ -20,6 +20,16 @@ export type Brand = z.infer<typeof Brand>;
 export const Competitor = z.object({ name: Name, domain: Domain.optional(), aliases: Aliases });
 export type Competitor = z.infer<typeof Competitor>;
 
+export const WordPressSettings = z.object({
+  siteUrl: z
+    .string()
+    .trim()
+    .url()
+    .regex(/^https:\/\//, 'must start with https://'),
+  username: z.string().trim().min(1).max(60),
+  postStatus: z.enum(['draft', 'publish']).default('draft'),
+});
+
 export const WorkspaceSettings = z.object({
   name: z.string().trim().min(1).max(80),
   brand: Brand,
@@ -32,6 +42,7 @@ export const WorkspaceSettings = z.object({
   engines: z.array(z.enum(ENGINE_IDS)).min(1).default(['openai', 'nova', 'sonar']),
   samples: z.number().int().min(1).max(5).default(3),
   schedule: z.enum(['weekly', 'off']).default('weekly'),
+  wordpress: WordPressSettings.optional(),
 });
 export type WorkspaceSettings = z.infer<typeof WorkspaceSettings>;
 

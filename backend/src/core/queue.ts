@@ -2,7 +2,8 @@ import { SendMessageBatchCommand, SQSClient } from '@aws-sdk/client-sqs';
 
 export type GapJob =
   | { type: 'gap'; workspaceId: string; promptId: string; runId?: string }
-  | { type: 'sitemap'; workspaceId: string };
+  | { type: 'sitemap'; workspaceId: string }
+  | { type: 'draft'; workspaceId: string; gapId: string; postId: string };
 
 const sqs = new SQSClient({});
 const BATCH = 10;

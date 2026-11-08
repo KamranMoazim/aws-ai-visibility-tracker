@@ -1,6 +1,7 @@
 import { api, type Answer, type WorkspaceView } from './api';
 import { dateTime, engineClass, engineLabel, hostOf } from './format';
 import { HighlightedText } from './Highlighted';
+import { TrendChart } from './TrendChart';
 import { href } from './route';
 import { useAction } from './useAction';
 import { useLoad } from './useLoad';
@@ -88,6 +89,7 @@ export function PromptPage({
   );
   const runs = useLoad(() => api.runs(workspaceId), [workspaceId]);
   const findGap = useAction();
+  const trend = useLoad(() => api.promptTrend(workspaceId, promptId), [workspaceId, promptId]);
 
   if (view.error || answers.error) {
     return <p className="error">{view.error ?? answers.error}</p>;
@@ -163,6 +165,25 @@ export function PromptPage({
         </li>
       </ul>
       {!answers.data.answers.length && <p className="empty">This prompt has no answers yet.</p>}
+      {trend.data && trend.data.points.length > 0 && (
+        <section className="section">
+          <h2>This prompt over time</h2>
+          <TrendChart
+            points={trend.data.points.filter((point) => point.engine !== 'all')}
+            engines={view.data.workspace.engines}
+            markers={trend.data.links.map((link) => ({
+              at: link.publishedAt,
+              label: `Published: ${link.title.slice(0, 32)}`,
+            }))}
+          />
+          {trend.data.links.length > 0 && (
+            <p className="muted small">
+              Engines need to crawl and index a new page first, so expect weeks before it can show
+              up here.
+            </p>
+          )}
+        </section>
+      )}
       {sources.size > 0 && (
         <section className="section">
           <h2>Sources these answers cite</h2>

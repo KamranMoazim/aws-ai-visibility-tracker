@@ -1,6 +1,7 @@
 import { BatchWriteCommand } from '@aws-sdk/lib-dynamodb';
 import {
   ALL_PROMPTS,
+  METRIC_PREFIX,
   metricSk,
   workspaceMetricsPk,
   workspaceMetricsSk,
@@ -89,4 +90,21 @@ export async function listWorkspaceTrend(
     },
   });
   return items.map(({ PK, SK, GSI1PK, GSI1SK, ...point }) => point as unknown as TrendPoint);
+}
+
+export async function listPromptTrend(
+  workspaceId: string,
+  promptId: string,
+): Promise<TrendPoint[]> {
+  const items = await queryAll<Record<string, unknown>>({
+    TableName: TABLE_NAME,
+    KeyConditionExpression: 'PK = :pk AND begins_with(SK, :prefix)',
+    ExpressionAttributeValues: {
+      ':pk': workspacePk(workspaceId),
+      ':prefix': `${METRIC_PREFIX}${promptId}#`,
+    },
+  });
+  return items
+    .map(({ PK, SK, GSI1PK, GSI1SK, ...point }) => point as unknown as TrendPoint)
+    .sort((left, right) => left.at.localeCompare(right.at));
 }

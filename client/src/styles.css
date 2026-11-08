@@ -1189,3 +1189,91 @@ details summary {
   cursor: pointer;
   color: var(--action);
 }
+
+textarea {
+  width: 100%;
+  padding: 0.5rem 0.6rem;
+  border: 1px solid var(--rule-strong);
+  border-radius: 6px;
+  background: var(--surface);
+  color: var(--ink);
+  font: inherit;
+  resize: vertical;
+}
+
+.markdown-input {
+  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+  font-size: 0.85rem;
+  line-height: 1.5;
+}
+
+.editor {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 440px);
+  gap: 1.5rem;
+  align-items: start;
+}
+
+.slug-field {
+  display: flex;
+  align-items: center;
+  gap: 0.25rem;
+}
+
+.faq-editor {
+  flex-direction: column;
+  flex-wrap: nowrap;
+}
+
+.faq-pair {
+  display: flex;
+  flex-direction: column;
+  gap: 0.35rem;
+  padding-bottom: 0.75rem;
+  border-bottom: 1px solid var(--rule);
+}
+
+.faq-pair .link-button {
+  align-self: flex-start;
+}
+
+.publish-box {
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+}
+
+.publish-box .banner {
+  margin: 0;
+}
+
+.publish-box .link-button {
+  align-self: flex-start;
+}
+
+.preview-body {
+  font-family: var(--serif);
+  line-height: 1.6;
+  max-height: 70vh;
+  overflow-y: auto;
+}
+
+.preview-body h1 {
+  font-size: 1.5rem;
+}
+
+.preview-body h2 {
+  font-size: 1.2rem;
+  margin-top: 1.5rem;
+}
+
+.stack-fieldset {
+  flex-direction: column;
+  flex-wrap: nowrap;
+}
+
+@media (max-width: 860px) {
+  .editor {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}

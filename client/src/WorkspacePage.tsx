@@ -198,6 +198,9 @@ export function WorkspacePage({ workspaceId }: { workspaceId: string }) {
           <a className="button" href={href.gaps(workspaceId)}>
             Gaps
           </a>
+          <a className="button" href={href.posts(workspaceId)}>
+            Pages
+          </a>
           <a className="button" href={href.settings(workspaceId)}>
             Settings
           </a>
@@ -224,7 +227,14 @@ export function WorkspacePage({ workspaceId }: { workspaceId: string }) {
 
       <section className="section">
         <h2>Mention rate over time</h2>
-        <TrendChart points={points.filter((point) => point.engine !== 'all')} engines={engines} />
+        <TrendChart
+          points={points.filter((point) => point.engine !== 'all')}
+          engines={engines}
+          markers={(visibility.data?.markers ?? []).map((marker) => ({
+            at: marker.at,
+            label: `Published: ${marker.label.slice(0, 32)}`,
+          }))}
+        />
       </section>
 
       <div className="columns">

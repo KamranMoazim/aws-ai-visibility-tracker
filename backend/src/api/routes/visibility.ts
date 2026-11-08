@@ -2,6 +2,7 @@ import { Hono } from 'hono';
 import { HttpError } from '../../core/http-error.js';
 import { ALL_ENGINES } from '../../core/keys.js';
 import { listWorkspaceTrend } from '../../data/metrics.js';
+import { listPosts } from '../../data/posts.js';
 import { listRuns } from '../../data/runs.js';
 import type { AppEnv } from '../auth.js';
 import { ownedWorkspace } from '../ownership.js';
@@ -33,12 +34,18 @@ visibilityRoutes.get('/:ws/visibility', async (context) => {
     .sort(
       (left, right) => left.at.localeCompare(right.at) || left.engine.localeCompare(right.engine),
     );
-  const runs = await listRuns(workspace.workspaceId, 10);
+  const [runs, published] = await Promise.all([
+    listRuns(workspace.workspaceId, 10),
+    listPosts(workspace.workspaceId, 'published'),
+  ]);
   const latest = runs.find((run) => run.status === 'complete');
   return context.json({
     from,
     to,
     points,
+    markers: published
+      .filter((post) => post.publishedAt && post.publishedAt >= from && post.publishedAt <= to)
+      .map((post) => ({ at: post.publishedAt!, label: post.title, postId: post.postId })),
     latestRun: latest
       ? {
           runId: latest.runId,

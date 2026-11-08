@@ -157,7 +157,17 @@ interface RawResponse {
   body: string;
 }
 
-function requestOnce(url: URL, options: Required<FetchOptions>): Promise<RawResponse> {
+interface RequestInit {
+  method: string;
+  headers?: Record<string, string>;
+  body?: string;
+}
+
+function requestOnce(
+  url: URL,
+  options: Required<FetchOptions>,
+  init: RequestInit = { method: 'GET' },
+): Promise<RawResponse> {
   return new Promise((resolve, reject) => {
     const client = url.protocol === 'https:' ? https : http;
     let settled = false;
@@ -177,13 +187,17 @@ function requestOnce(url: URL, options: Required<FetchOptions>): Promise<RawResp
     const request = client.request(
       url,
       {
-        method: 'GET',
+        method: init.method,
         agent: false,
         lookup: guardedLookup(options.isAllowedAddress) as never,
         headers: {
           'user-agent': USER_AGENT,
           accept: 'text/html,application/xhtml+xml,application/xml,text/plain;q=0.9,*/*;q=0.5',
           'accept-encoding': 'gzip, deflate, br',
+          ...(init.body !== undefined
+            ? { 'content-length': String(Buffer.byteLength(init.body)) }
+            : {}),
+          ...init.headers,
         },
       },
       (response) => {
@@ -232,7 +246,7 @@ function requestOnce(url: URL, options: Required<FetchOptions>): Promise<RawResp
       options.timeoutMs,
     );
     request.on('error', (error) => finish(error));
-    request.end();
+    request.end(init.body);
   });
 }
 
@@ -278,6 +292,38 @@ const withDefaults = (options: FetchOptions = {}): Required<FetchOptions> => ({
 
 export function fetchPage(url: string, options?: FetchOptions): Promise<FetchedPage> {
   return followRedirects(url, withDefaults(options), true);
+}
+
+export interface JsonResponse {
+  status: number;
+  body: unknown;
+}
+
+export async function sendJson(
+  url: string,
+  method: 'POST' | 'PUT' | 'DELETE',
+  headers: Record<string, string>,
+  payload: unknown,
+  options?: FetchOptions,
+): Promise<JsonResponse> {
+  const settings = withDefaults(options);
+  const target = new URL(url);
+  checkUrl(target, settings);
+  if (target.protocol !== 'https:') {
+    throw new FetchRefused('scheme', 'credentials are only sent over https');
+  }
+  const response = await requestOnce(target, settings, {
+    method,
+    headers: { 'content-type': 'application/json', accept: 'application/json', ...headers },
+    body: payload === undefined ? undefined : JSON.stringify(payload),
+  });
+  let body: unknown = response.body;
+  try {
+    body = JSON.parse(response.body);
+  } catch {
+    body = response.body;
+  }
+  return { status: response.status, body };
 }
 
 export interface RobotsRule {

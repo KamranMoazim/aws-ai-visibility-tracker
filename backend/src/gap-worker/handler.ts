@@ -6,6 +6,8 @@ import { setSitemapImport } from '../data/pages.js';
 import { getPrompt, getWorkspace } from '../data/workspaces.js';
 import { findGap } from '../gaps/find.js';
 import { importSitemap } from '../gaps/import-sitemap.js';
+import { getPost, putPost } from '../data/posts.js';
+import { writeDraft } from '../publish/draft.js';
 
 const MAX_RECEIVES = 3;
 
@@ -20,6 +22,28 @@ async function runJob(job: GapJob): Promise<void> {
     console.log(`sitemap ok workspace=${workspace.workspaceId} pages=${count}`);
     return;
   }
+  if (job.type === 'draft') {
+    const [gap, post] = await Promise.all([
+      getGap(workspace.workspaceId, job.gapId),
+      getPost(workspace.workspaceId, job.postId),
+    ]);
+    if (!gap?.brief || post?.status !== 'generating') {
+      console.log(
+        `draft skipped post=${job.postId} reason=${gap?.brief ? post?.status : 'no_brief'}`,
+      );
+      return;
+    }
+    const { draft, model } = await writeDraft(workspace.brand.name, gap.promptText, gap.brief);
+    await putPost({
+      ...post,
+      ...draft,
+      status: 'draft',
+      draftModel: model,
+      updatedAt: new Date().toISOString(),
+    });
+    console.log(`draft ok post=${post.postId} chars=${draft.markdown.length}`);
+    return;
+  }
   const prompt = await getPrompt(workspace.workspaceId, job.promptId);
   if (!prompt) {
     console.log(`job skipped prompt=${job.promptId} reason=deleted`);
@@ -29,6 +53,18 @@ async function runJob(job: GapJob): Promise<void> {
 }
 
 async function recordFinalFailure(job: GapJob, message: string): Promise<void> {
+  if (job.type === 'draft') {
+    const post = await getPost(job.workspaceId, job.postId);
+    if (post) {
+      await putPost({
+        ...post,
+        status: 'failed',
+        error: message,
+        updatedAt: new Date().toISOString(),
+      });
+    }
+    return;
+  }
   if (job.type === 'sitemap') {
     await setSitemapImport(job.workspaceId, {
       status: 'failed',

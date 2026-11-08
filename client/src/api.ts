@@ -51,6 +51,12 @@ export interface Competitor {
   slug?: string;
 }
 
+export interface WordPressSettings {
+  siteUrl: string;
+  username: string;
+  postStatus: 'draft' | 'publish';
+}
+
 export interface WorkspaceSettings {
   name: string;
   brand: Brand;
@@ -58,6 +64,7 @@ export interface WorkspaceSettings {
   engines: EngineId[];
   samples: number;
   schedule: 'weekly' | 'off';
+  wordpress?: WordPressSettings;
 }
 
 export interface Workspace extends WorkspaceSettings {
@@ -139,6 +146,7 @@ export interface Visibility {
   from: string;
   to: string;
   points: TrendPoint[];
+  markers: { at: string; label: string; postId: string }[];
   latestRun: {
     runId: string;
     startedAt: string;
@@ -241,6 +249,37 @@ export interface PagesView {
   pages: { url: string; title?: string }[];
 }
 
+export type PostStatus = 'generating' | 'draft' | 'published' | 'failed';
+
+export interface FaqPair {
+  question: string;
+  answer: string;
+}
+
+export interface Post {
+  postId: string;
+  gapId?: string;
+  promptIds: string[];
+  status: PostStatus;
+  title: string;
+  slug: string;
+  description: string;
+  markdown: string;
+  faq: FaqPair[];
+  target?: 'hosted' | 'wordpress';
+  publishedAt?: string;
+  publishedUrl?: string;
+  error?: string;
+  updatedAt: string;
+}
+
+export interface CrawlerCheck {
+  domain: string;
+  path: string;
+  robotsFound: boolean;
+  crawlers: { agent: string; allowed: boolean }[];
+}
+
 export interface WorkspaceView {
   workspace: Workspace;
   competitors: Competitor[];
@@ -300,6 +339,41 @@ export const api = {
   importSitemap: (workspaceId: string) =>
     apiCall<{ queued: boolean }>('POST', `${ws(workspaceId)}/sitemap/import`),
   pages: (workspaceId: string) => apiCall<PagesView>('GET', `${ws(workspaceId)}/pages`),
+  draftFromGap: (workspaceId: string, gapId: string) =>
+    apiCall<{ postId: string }>('POST', `${ws(workspaceId)}/gaps/${gapId}/draft`),
+  posts: (workspaceId: string, status: PostStatus) =>
+    apiCall<{ posts: (Omit<Post, 'markdown' | 'faq'> & { placeholders: number })[] }>(
+      'GET',
+      `${ws(workspaceId)}/posts?status=${status}`,
+    ),
+  post: (workspaceId: string, postId: string) =>
+    apiCall<{ post: Post; placeholders: string[] }>('GET', `${ws(workspaceId)}/posts/${postId}`),
+  savePost: (
+    workspaceId: string,
+    post: Pick<Post, 'postId' | 'title' | 'slug' | 'description' | 'markdown' | 'faq'>,
+  ) =>
+    apiCall<{ post: Post; placeholders: string[] }>(
+      'PUT',
+      `${ws(workspaceId)}/posts/${post.postId}`,
+      {
+        title: post.title,
+        slug: post.slug,
+        description: post.description,
+        markdown: post.markdown,
+        faq: post.faq,
+      },
+    ),
+  publishPost: (workspaceId: string, postId: string, target: 'hosted' | 'wordpress') =>
+    apiCall<{ url: string }>('POST', `${ws(workspaceId)}/posts/${postId}/publish`, { target }),
+  unpublishPost: (workspaceId: string, postId: string) =>
+    apiCall<{ unpublished: boolean }>('POST', `${ws(workspaceId)}/posts/${postId}/unpublish`),
+  crawlerCheck: (workspaceId: string, target: 'hosted' | 'wordpress' | 'site') =>
+    apiCall<CrawlerCheck>('GET', `${ws(workspaceId)}/crawler-check?target=${target}`),
+  promptTrend: (workspaceId: string, promptId: string) =>
+    apiCall<{
+      points: TrendPoint[];
+      links: { postId: string; title: string; publishedAt: string; url?: string }[];
+    }>('GET', `${ws(workspaceId)}/prompts/${promptId}/trend`),
   brands: (workspaceId: string) =>
     apiCall<{ brands: UntrackedBrand[] }>('GET', `${ws(workspaceId)}/brands`),
 };
