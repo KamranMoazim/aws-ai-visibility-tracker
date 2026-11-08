@@ -17,9 +17,11 @@ for name in /answershare/openai-api-key /answershare/perplexity-api-key /answers
 done
 
 # CDK-managed custom resources can leave log groups behind after the stack is gone.
-for group in $(aws logs describe-log-groups --region "$REGION" --log-group-name-prefix /aws/lambda/AnswerShareStack- \
-  --query 'logGroups[].logGroupName' --output text); do
-  aws logs delete-log-group --region "$REGION" --log-group-name "$group" && echo "deleted $group"
+for prefix in /aws/lambda/AnswerShareStack- AnswerShareStack-; do
+  for group in $(aws logs describe-log-groups --region "$REGION" --log-group-name-prefix "$prefix" \
+    --query 'logGroups[].logGroupName' --output text); do
+    aws logs delete-log-group --region "$REGION" --log-group-name "$group" && echo "deleted $group"
+  done
 done
 
 rm -f infra/cdk-outputs.json client/public/config.json
