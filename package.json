@@ -11,6 +11,9 @@
     "typecheck": "npm --prefix infra run typecheck && npm --prefix backend run typecheck",
     "format": "npx prettier@3.6.2 --write infra/bin infra/lib infra/test backend/src backend/test backend/scripts",
     "keys:set": "scripts/set-keys.sh",
-    "run:now": "npm --prefix backend run run-now --"
+    "run:now": "npm --prefix backend run run-now --",
+    "seed": "npm --prefix backend run seed --",
+    "run:start": "npm --prefix backend run start-run --",
+    "test:live": "npm --prefix backend run test:live"
   }
 }

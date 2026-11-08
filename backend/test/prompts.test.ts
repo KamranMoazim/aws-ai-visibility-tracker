@@ -12,7 +12,10 @@ check(
   findBrandTerms('is ACME PAY any good', brand).includes('Acme Pay'),
 );
 check('possessive found', findBrandTerms("what are Acme's fees", brand).includes('Acme'));
-check('curly possessive found', findBrandTerms('what are Acme’s fees', brand).includes('Acme'));
+check(
+  'curly possessive found',
+  findBrandTerms('what are Acme\u2019s fees', brand).includes('Acme'),
+);
 check(
   'domain found',
   findBrandTerms('compare acmepay.io and wise.com', brand).includes('acmepay.io'),

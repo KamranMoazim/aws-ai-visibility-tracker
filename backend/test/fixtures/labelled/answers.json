@@ -1,0 +1,133 @@
+{
+  "brands": [
+    {
+      "brandId": "own",
+      "own": true,
+      "name": "Acme Pay",
+      "domain": "acmepay.io",
+      "aliases": ["AcmePay"]
+    },
+    {
+      "brandId": "wise",
+      "name": "Wise",
+      "domain": "wise.com",
+      "aliases": ["Wise Business", "TransferWise"]
+    },
+    { "brandId": "payoneer", "name": "Payoneer", "domain": "payoneer.com", "aliases": [] },
+    { "brandId": "paypal", "name": "PayPal", "domain": "paypal.com", "aliases": [] },
+    {
+      "brandId": "stripe",
+      "name": "Stripe",
+      "domain": "stripe.com",
+      "aliases": ["Stripe Invoicing"]
+    },
+    {
+      "brandId": "revolut",
+      "name": "Revolut",
+      "domain": "revolut.com",
+      "aliases": ["Revolut Business"]
+    }
+  ],
+  "answers": [
+    {
+      "id": "a01",
+      "text": "For international invoicing, Wise Business and Payoneer are the most common picks. PayPal works too but its fees are higher.",
+      "expected": ["wise", "payoneer", "paypal"]
+    },
+    {
+      "id": "a02",
+      "text": "Acme Pay is built for agencies billing in several currencies. Compared with Wise, Acme Pay adds automatic reminders.",
+      "expected": ["own", "wise"]
+    },
+    {
+      "id": "a03",
+      "text": "Most freelancers start with PayPal. Unlike PayPal, Wise shows the mid-market rate up front.",
+      "expected": ["paypal", "wise"]
+    },
+    {
+      "id": "a04",
+      "text": "Stripe's invoicing product is a solid choice if you already accept cards; Revolut Business is cheaper for EUR and GBP.",
+      "expected": ["stripe", "revolut"]
+    },
+    {
+      "id": "a05",
+      "text": "Top options:\n1. Payoneer - good for marketplaces\n2. AcmePay - lowest FX margin\n3. Stripe Invoicing - best card support",
+      "expected": ["payoneer", "own", "stripe"]
+    },
+    {
+      "id": "a06",
+      "text": "If you invoice in USD from Europe, TransferWise (now Wise) is hard to beat. Revolut is a reasonable second choice.",
+      "expected": ["wise", "revolut"]
+    },
+    {
+      "id": "a07",
+      "text": "There is no single best tool; compare FX margins, payout speed and whether clients can pay by card.",
+      "expected": []
+    },
+    {
+      "id": "a08",
+      "text": "ACME PAY and PAYONEER both support multi-currency accounts. PAYPAL charges a conversion spread.",
+      "expected": ["own", "payoneer", "paypal"]
+    },
+    {
+      "id": "a09",
+      "text": "See acmepay.io for a fee calculator, or wise.com for their pricing page.",
+      "expected": ["own", "wise"]
+    },
+    {
+      "id": "a10",
+      "text": "Revolut Business, Wise and Payoneer all offer local account details in several countries.",
+      "expected": ["revolut", "wise", "payoneer"]
+    },
+    {
+      "id": "a11",
+      "text": "Many small agencies use Stripe for cards and Payoneer for bank transfers, then reconcile in their accounting tool.",
+      "expected": ["stripe", "payoneer"]
+    },
+    {
+      "id": "a12",
+      "text": "Acme Pay's free plan covers 5 invoices a month, which is enough for most solo consultants. PayPal has no monthly fee but a higher per-transaction cost.",
+      "expected": ["own", "paypal"]
+    },
+    {
+      "id": "a13",
+      "text": "Payoneer\u2019s marketplace integrations make it popular with Upwork sellers; Wise is better for direct clients.",
+      "expected": ["payoneer", "wise"]
+    },
+    {
+      "id": "a14",
+      "text": "PayPal Business is the most familiar to clients, though Stripe offers better developer tooling.",
+      "expected": ["paypal", "stripe"]
+    },
+    {
+      "id": "a15",
+      "text": "For a UK sole trader, Revolut, Wise and Acme-Pay are all worth testing with a small invoice first.",
+      "expected": ["revolut", "wise", "own"]
+    },
+    {
+      "id": "a16",
+      "text": "Wise Business supports 40+ currencies. Payoneer supports fewer but integrates with marketplaces. Stripe is card-first.",
+      "expected": ["wise", "payoneer", "stripe"]
+    },
+    {
+      "id": "a17",
+      "text": "The cheapest route is usually a multi-currency account (Wise) plus a plain PDF invoice.",
+      "expected": ["wise"]
+    },
+    {
+      "id": "a18",
+      "text": "AcmePay, Payoneer and PayPal were compared in a 2026 review; AcmePay had the lowest total fees.",
+      "expected": ["own", "payoneer", "paypal"]
+    },
+    {
+      "id": "a19",
+      "text": "Stripe Invoicing lets clients pay by card or ACH. Revolut Business is cheaper for SEPA transfers.",
+      "expected": ["stripe", "revolut"]
+    },
+    {
+      "id": "a20",
+      "text": "Reviewers often mention Payoneer first, then Wise, then Acme Pay for agencies.",
+      "expected": ["payoneer", "wise", "own"]
+    }
+  ]
+}

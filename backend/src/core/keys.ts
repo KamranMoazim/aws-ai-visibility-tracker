@@ -15,18 +15,21 @@ export const userPk = (userId: string) => `USER#${userId}`;
 export const workspaceSk = (workspaceId: string) => `WS#${workspaceId}`;
 export const competitorSk = (slug: string) => `${COMPETITOR_PREFIX}${slug}`;
 export const promptSk = (promptId: string) => `${PROMPT_PREFIX}${promptId}`;
-export const runSk = (iso: string, runId: string) => `${RUN_PREFIX}${iso}#${runId}`;
+export const runSk = (runId: string) => `${RUN_PREFIX}${runId}`;
 export const runPk = (runId: string) => `${RUN_PREFIX}${runId}`;
 export const answerSk = (promptId: string, engine: string, sample: number) =>
   `${ANSWER_PREFIX}${promptId}#${engine}#${sample}`;
 export const promptIndexPk = (promptId: string) => `${PROMPT_PREFIX}${promptId}`;
 export const answerIndexSk = (iso: string, engine: string, sample: number) =>
   `${iso}#${engine}#${sample}`;
+export const ALL_PROMPTS = '_all';
+export const ALL_ENGINES = 'all';
 export const metricSk = (promptId: string, engine: string, iso: string) =>
   `${METRIC_PREFIX}${promptId}#${engine}#${iso}`;
 export const metricPrefix = (promptId: string, engine: string) =>
   `${METRIC_PREFIX}${promptId}#${engine}#`;
 export const workspaceMetricsPk = (workspaceId: string) => `WS#${workspaceId}#MET`;
+export const workspaceMetricsSk = (iso: string, engine: string) => `${iso}#${engine}`;
 export const brandSk = (slug: string) => `${BRAND_PREFIX}${slug}`;
 export const pageSk = (urlHash: string) => `${PAGE_PREFIX}${urlHash}`;
 export const gapSk = (gapId: string) => `${GAP_PREFIX}${gapId}`;

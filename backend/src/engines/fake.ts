@@ -1,5 +1,7 @@
 import { createHash } from 'node:crypto';
-import type { AnswerEngine, EngineAnswer } from './types.js';
+import { EngineError, type AnswerEngine, type EngineAnswer } from './types.js';
+
+export const FAKE_FAIL_MARKER = '[[fail]]';
 
 export interface FakeAnswer {
   text: string;
@@ -28,6 +30,9 @@ export function fakeEngine(answers: FakeAnswer[] = FAKE_ANSWERS): AnswerEngine {
   return {
     id: 'fake',
     async ask(prompt, options) {
+      if (prompt.includes(FAKE_FAIL_MARKER)) {
+        throw new EngineError('fake', 400, false, 'forced failure');
+      }
       const seed = createHash('sha256').update(prompt).digest().readUInt32BE(0);
       const answer = answers[(seed + (options.sample ?? 0)) % answers.length];
       const result: EngineAnswer = {

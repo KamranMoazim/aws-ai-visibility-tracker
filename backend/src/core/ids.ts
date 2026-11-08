@@ -2,6 +2,9 @@ import { createHash, randomUUID } from 'node:crypto';
 
 export const newId = () => randomUUID().replace(/-/g, '').slice(0, 16);
 
+export const newRunId = (startedAt = new Date()) =>
+  `${startedAt.toISOString().replace(/[-:]/g, '').replace(/\.\d+/, '')}-${randomUUID().slice(0, 8)}`;
+
 export const hashId = (text: string) =>
   createHash('sha256').update(text).digest('hex').slice(0, 16);
 

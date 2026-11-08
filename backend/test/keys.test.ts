@@ -13,13 +13,22 @@ import {
   workspaceMetricsPk,
   workspacePk,
 } from '../src/core/keys.js';
-import { hashId, slugify } from '../src/core/ids.js';
+import { hashId, newRunId, slugify } from '../src/core/ids.js';
 import { rawAnswerKey } from '../src/core/storage.js';
 import { check, finish } from './helpers.js';
 
 const iso = '2026-11-08T10:00:00.000Z';
 check('workspace pk', workspacePk('w1') === 'WS#w1');
-check('run sk sorts by time', runSk(iso, 'r1') === `RUN#${iso}#r1`);
+check('run sk', runSk('20261108T100000Z-ab12') === 'RUN#20261108T100000Z-ab12');
+check(
+  'run ids sort by start time',
+  newRunId(new Date('2026-11-08T10:00:00Z')) < newRunId(new Date('2026-11-09T09:00:00Z')),
+);
+check(
+  'run id format',
+  /^20261108T100000Z-[0-9a-f]{8}$/.test(newRunId(new Date(iso))),
+  newRunId(new Date(iso)),
+);
 check('run pk', runPk('r1') === 'RUN#r1');
 check('answer sk is deterministic', answerSk('p1', 'openai', 2) === 'ANS#p1#openai#2');
 check('answer index', promptIndexPk('p1') === 'PROMPT#p1');
