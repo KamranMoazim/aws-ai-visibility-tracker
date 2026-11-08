@@ -46,6 +46,8 @@ export interface Workspace extends WorkspaceSettings {
   workspaceId: string;
   ownerId: string;
   createdAt: string;
+  lastManualRunAt?: string;
+  sitemapImport?: { status: string; pages?: number; at: string; error?: string };
 }
 
 export interface CompetitorRecord extends Competitor {

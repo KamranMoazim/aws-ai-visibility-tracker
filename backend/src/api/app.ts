@@ -2,6 +2,7 @@ import { Hono } from 'hono';
 import { ZodError } from 'zod';
 import { HttpError } from '../core/http-error.js';
 import { requireUser, type AppEnv } from './auth.js';
+import { gapRoutes } from './routes/gaps.js';
 import { promptRoutes } from './routes/prompts.js';
 import { runRoutes } from './routes/runs.js';
 import { visibilityRoutes } from './routes/visibility.js';
@@ -16,6 +17,7 @@ app.route('/workspaces', workspaceRoutes);
 app.route('/workspaces', promptRoutes);
 app.route('/workspaces', runRoutes);
 app.route('/workspaces', visibilityRoutes);
+app.route('/workspaces', gapRoutes);
 
 app.notFound((context) => context.json({ error: 'not_found', message: 'Not found' }, 404));
 app.onError((error, context) => {

@@ -4,6 +4,8 @@ export type RouteView =
   | { page: 'home' }
   | { page: 'workspace'; workspaceId: string }
   | { page: 'settings'; workspaceId: string }
+  | { page: 'gaps'; workspaceId: string }
+  | { page: 'gap'; workspaceId: string; gapId: string }
   | { page: 'prompt'; workspaceId: string; promptId: string; runId?: string };
 
 export function parseHash(hash: string): RouteView {
@@ -12,6 +14,12 @@ export function parseHash(hash: string): RouteView {
   if (section === 'w' && workspaceId) {
     if (page === 'settings') {
       return { page: 'settings', workspaceId };
+    }
+    if (page === 'gaps') {
+      return { page: 'gaps', workspaceId };
+    }
+    if (page === 'g' && promptId) {
+      return { page: 'gap', workspaceId, gapId: promptId };
     }
     if (page === 'p' && promptId) {
       const runId = new URLSearchParams(query).get('run') ?? undefined;
@@ -26,6 +34,8 @@ export const href = {
   home: () => '#/',
   workspace: (workspaceId: string) => `#/w/${workspaceId}`,
   settings: (workspaceId: string) => `#/w/${workspaceId}/settings`,
+  gaps: (workspaceId: string) => `#/w/${workspaceId}/gaps`,
+  gap: (workspaceId: string, gapId: string) => `#/w/${workspaceId}/g/${gapId}`,
   prompt: (workspaceId: string, promptId: string, runId?: string) =>
     `#/w/${workspaceId}/p/${promptId}${runId ? `?run=${encodeURIComponent(runId)}` : ''}`,
 };

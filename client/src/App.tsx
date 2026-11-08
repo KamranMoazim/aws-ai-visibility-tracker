@@ -1,6 +1,8 @@
 import { useState } from 'react';
 import { currentSession, signOut, type Session } from './auth';
 import { AuthScreen } from './AuthScreen';
+import { GapPage } from './GapPage';
+import { GapsPage } from './GapsPage';
 import { Home } from './Home';
 import { PromptPage } from './PromptPage';
 import { href, useHashRoute } from './route';
@@ -38,6 +40,8 @@ export function App() {
         {route.page === 'home' && <Home />}
         {route.page === 'workspace' && <WorkspacePage workspaceId={route.workspaceId} />}
         {route.page === 'settings' && <SettingsPage workspaceId={route.workspaceId} />}
+        {route.page === 'gaps' && <GapsPage workspaceId={route.workspaceId} />}
+        {route.page === 'gap' && <GapPage workspaceId={route.workspaceId} gapId={route.gapId} />}
         {route.page === 'prompt' && (
           <PromptPage
             workspaceId={route.workspaceId}

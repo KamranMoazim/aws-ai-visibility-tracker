@@ -38,6 +38,7 @@ export interface Run {
   diff?: RunDiff;
   newBrands?: string[];
   gapCandidates?: GapCandidate[];
+  gapJobsQueued?: number;
   disagreements?: number;
 }
 

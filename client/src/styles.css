@@ -1071,3 +1071,121 @@ mark.brand-untracked {
     animation: none !important;
   }
 }
+
+.lede {
+  max-width: 70ch;
+}
+
+.tabs {
+  display: flex;
+  gap: 0.25rem;
+  border-bottom: 1px solid var(--rule);
+  margin: 1rem 0;
+}
+
+.tab {
+  border: 0;
+  border-bottom: 2px solid transparent;
+  border-radius: 0;
+  background: none;
+  color: var(--ink-2);
+}
+
+.tab.active {
+  border-bottom-color: var(--action);
+  color: var(--ink);
+  font-weight: 600;
+}
+
+.gap-list {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+}
+
+.gap-list a {
+  display: grid;
+  grid-template-columns: 3.5rem minmax(0, 1fr) auto;
+  gap: 1rem;
+  align-items: start;
+  padding: 0.9rem 0;
+  border-bottom: 1px solid var(--rule);
+  color: var(--ink);
+  text-decoration: none;
+}
+
+.gap-list a:hover strong {
+  text-decoration: underline;
+}
+
+.gap-score {
+  font-size: 1.3rem;
+  font-weight: 650;
+  font-variant-numeric: tabular-nums;
+  color: var(--bad);
+}
+
+.gap-body {
+  display: flex;
+  flex-direction: column;
+  gap: 0.2rem;
+}
+
+.matrix .gap-tag {
+  text-decoration: none;
+}
+
+.gap-page .actions,
+.prompt-page .actions {
+  margin: 0.75rem 0 1rem;
+  flex-wrap: wrap;
+}
+
+.brief-title {
+  font-family: var(--serif);
+  font-size: 1.35rem;
+  margin: 0.25rem 0 1rem;
+}
+
+.outline {
+  padding-left: 1.25rem;
+  margin: 0;
+}
+
+.outline > li {
+  margin-bottom: 0.6rem;
+}
+
+.outline ul {
+  margin: 0.25rem 0 0;
+  color: var(--ink-2);
+}
+
+.facts li {
+  margin-bottom: 0.25rem;
+}
+
+.phrases {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.4rem;
+  margin: 0;
+}
+
+.phrases span {
+  border: 1px solid var(--rule);
+  border-radius: 10px;
+  padding: 0 0.5rem;
+  font-size: 0.85rem;
+}
+
+.citations.plain {
+  border-top: 0;
+  padding-top: 0;
+  margin-top: 0;
+}
+
+details summary {
+  cursor: pointer;
+  color: var(--action);
+}

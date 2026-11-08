@@ -195,6 +195,9 @@ export function WorkspacePage({ workspaceId }: { workspaceId: string }) {
           </p>
         </div>
         <div className="actions">
+          <a className="button" href={href.gaps(workspaceId)}>
+            Gaps
+          </a>
           <a className="button" href={href.settings(workspaceId)}>
             Settings
           </a>
@@ -251,7 +254,11 @@ export function WorkspacePage({ workspaceId }: { workspaceId: string }) {
                         {prompt.text}
                       </a>
                       <span className="stage">{prompt.stage}</span>
-                      {gapIds.has(prompt.promptId) && <span className="gap-tag">Gap</span>}
+                      {gapIds.has(prompt.promptId) && (
+                        <a className="gap-tag" href={href.gap(workspaceId, prompt.promptId)}>
+                          Gap
+                        </a>
+                      )}
                     </th>
                     {engines.map((engine) => {
                       const cell = latest?.summary?.[prompt.promptId]?.[engine];

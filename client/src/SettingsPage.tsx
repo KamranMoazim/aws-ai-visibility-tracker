@@ -458,6 +458,64 @@ function PromptEditor({
   );
 }
 
+function PagesSection({ workspaceId }: { workspaceId: string }) {
+  const pages = useLoad(() => api.pages(workspaceId), [workspaceId]);
+  const { busy, error, run } = useAction();
+  const state = pages.data?.import;
+  const active = state && ['queued', 'running'].includes(state.status);
+
+  useEffect(() => {
+    if (!active) {
+      return;
+    }
+    const timer = setInterval(pages.reload, 5000);
+    return () => clearInterval(timer);
+  }, [active, pages.reload]);
+
+  return (
+    <div className="stack">
+      <p className="muted small">
+        Gap briefs compare the pages AI answers cite with your closest pages. Import your sitemap so
+        they can find them. Up to 500 pages; titles are read for the first 150.
+      </p>
+      <p>
+        {pages.data ? `${pages.data.count} pages imported` : 'Loading'}
+        {state && (
+          <span className="muted">
+            {' '}
+            (last import {state.status}
+            {state.error ? `: ${state.error}` : ''})
+          </span>
+        )}
+      </p>
+      {error && <p className="error">{error}</p>}
+      <button
+        disabled={busy || Boolean(active)}
+        onClick={() =>
+          run(async () => {
+            await api.importSitemap(workspaceId);
+            pages.reload();
+          })
+        }
+      >
+        {active ? 'Importing' : 'Import sitemap.xml'}
+      </button>
+      {pages.data && pages.data.pages.length > 0 && (
+        <details>
+          <summary>Show imported pages</summary>
+          <ul className="citations plain">
+            {pages.data.pages.map((page) => (
+              <li key={page.url}>
+                <span>{page.title || page.url}</span>
+              </li>
+            ))}
+          </ul>
+        </details>
+      )}
+    </div>
+  );
+}
+
 export function SettingsPage({ workspaceId }: { workspaceId: string }) {
   const view = useLoad(() => api.workspace(workspaceId), [workspaceId]);
   if (view.error) {
@@ -492,6 +550,10 @@ export function SettingsPage({ workspaceId }: { workspaceId: string }) {
       <section className="section">
         <h2>Competitors</h2>
         <CompetitorEditor workspaceId={workspaceId} initial={competitors} onSaved={view.reload} />
+      </section>
+      <section className="section">
+        <h2>Your pages</h2>
+        <PagesSection workspaceId={workspaceId} />
       </section>
       <section className="section">
         <h2>Prompts</h2>

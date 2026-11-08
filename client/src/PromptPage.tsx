@@ -2,6 +2,7 @@ import { api, type Answer, type WorkspaceView } from './api';
 import { dateTime, engineClass, engineLabel, hostOf } from './format';
 import { HighlightedText } from './Highlighted';
 import { href } from './route';
+import { useAction } from './useAction';
 import { useLoad } from './useLoad';
 
 function AnswerCard({ answer, view }: { answer: Answer; view: WorkspaceView }) {
@@ -86,6 +87,7 @@ export function PromptPage({
     [workspaceId, promptId, runId],
   );
   const runs = useLoad(() => api.runs(workspaceId), [workspaceId]);
+  const findGap = useAction();
 
   if (view.error || answers.error) {
     return <p className="error">{view.error ?? answers.error}</p>;
@@ -128,6 +130,27 @@ export function PromptPage({
           </select>
         </label>
       </div>
+      <div className="actions">
+        <button
+          disabled={findGap.busy || findGap.ran}
+          onClick={() =>
+            findGap.run(async () => {
+              await api.findGap(workspaceId, promptId);
+            })
+          }
+        >
+          Find the gap
+        </button>
+        <a className="button" href={href.gap(workspaceId, promptId)}>
+          Open the brief
+        </a>
+      </div>
+      {findGap.error && <p className="error">{findGap.error}</p>}
+      {findGap.ran && !findGap.error && (
+        <p className="ok">
+          Queued. The brief compares the cited pages with yours and appears under Gaps shortly.
+        </p>
+      )}
       <ul className="key" aria-label="Highlight key">
         <li>
           <mark className="brand-own">{view.data.workspace.brand.name}</mark> your brand

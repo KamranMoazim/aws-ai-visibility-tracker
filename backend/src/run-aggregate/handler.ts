@@ -14,6 +14,7 @@ import { writeRollups } from '../data/metrics.js';
 import { finishRun, getRun, previousCompletedRun, type EngineCost } from '../data/runs.js';
 import { getWorkspace } from '../data/workspaces.js';
 import type { EngineId } from '../engines/types.js';
+import { sendJobs } from '../core/queue.js';
 
 export interface AggregateEvent {
   runId: string;
@@ -87,6 +88,23 @@ export async function handler(event: AggregateEvent) {
     untrackedSightings(answers),
   );
   const gapCandidates = findGapCandidates(rollups);
+  let gapJobsQueued = 0;
+  if (process.env.GAP_QUEUE_URL && gapCandidates.length) {
+    try {
+      await sendJobs(
+        process.env.GAP_QUEUE_URL,
+        gapCandidates.map((gap) => ({
+          type: 'gap' as const,
+          workspaceId: workspace.workspaceId,
+          promptId: gap.promptId,
+          runId: run.runId,
+        })),
+      );
+      gapJobsQueued = gapCandidates.length;
+    } catch (error) {
+      console.error(`gap jobs not queued run=${run.runId} ${(error as Error).message}`);
+    }
+  }
   const total = rollups.get(rollupKey(ALL_PROMPTS, ALL_ENGINES));
   const extracted = answers.filter((answer) => answer.status === 'extracted').length;
   const failed = answers.filter((answer) => answer.status === 'failed').length;
@@ -101,11 +119,12 @@ export async function handler(event: AggregateEvent) {
     diff: diffSummaries(previous?.summary, summary),
     newBrands,
     gapCandidates,
+    gapJobsQueued,
     disagreements: answers.filter((answer) => answer.disagreement).length,
   });
   console.log(
     `run done run=${run.runId} answers=${answers.length} extracted=${extracted} failed=${failed} ` +
-      `gaps=${gapCandidates.length} newBrands=${newBrands.length}`,
+      `gaps=${gapCandidates.length} queued=${gapJobsQueued} newBrands=${newBrands.length}`,
   );
   return { runId: run.runId, extracted, failed, gapCandidates: gapCandidates.length };
 }

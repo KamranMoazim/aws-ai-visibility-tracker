@@ -105,7 +105,7 @@ const appFunctions = ofType('AWS::Lambda::Function').filter(
 );
 check(
   'app functions run node 24 on arm64',
-  appFunctions.length === 6 &&
+  appFunctions.length === 7 &&
     appFunctions.every(
       (lambdaFunction) =>
         lambdaFunction.Properties.Runtime === 'nodejs24.x' &&
@@ -182,13 +182,19 @@ const rawPuts = withAction(/^s3:PutObject/).filter((statement) =>
 );
 check(
   'raw bucket writes limited to raw/',
-  rawPuts.length === 1 && json(rawPuts[0].Resource).includes('/raw/*'),
+  rawPuts.length === 2 &&
+    rawPuts.every(
+      (statement) =>
+        /\/(raw|pages)\/\*/.test(json(statement.Resource)) &&
+        !json(statement.Resource).includes('"/*"'),
+    ) &&
+    rawPuts.some((statement) => json(statement.Resource).includes('/pages/*')),
   rawPuts,
 );
 const invokeModel = withAction(/^bedrock:InvokeModel$/);
 check(
   'bedrock invoke scoped to nova 2 lite',
-  invokeModel.length === 3 &&
+  invokeModel.length === 4 &&
     invokeModel.every(
       (statement) =>
         json(statement.Resource).includes('nova-2-lite-v1:0') && statement.Resource !== '*',
@@ -295,6 +301,41 @@ check(
     ),
 );
 
+const queuesWithDlq = ofType('AWS::SQS::Queue').filter(
+  (queue) => queue.Properties.RedrivePolicy?.maxReceiveCount === 3,
+);
+check(
+  'gap queue has a dlq after 3 receives',
+  queuesWithDlq.length === 1,
+  ofType('AWS::SQS::Queue'),
+);
+check(
+  'queue visibility covers six worker timeouts',
+  queuesWithDlq[0]?.Properties.VisibilityTimeout === 1800,
+  queuesWithDlq[0]?.Properties,
+);
+check(
+  'queues are tls only',
+  ofType('AWS::SQS::QueuePolicy').length === 2 &&
+    ofType('AWS::SQS::QueuePolicy').every((policy) =>
+      json(policy.Properties).includes('aws:SecureTransport'),
+    ),
+);
+const [gapSource] = ofType('AWS::Lambda::EventSourceMapping');
+check(
+  'gap worker takes one job at a time and reports partial failures',
+  gapSource?.Properties.BatchSize === 1 &&
+    json(gapSource?.Properties.FunctionResponseTypes) === json(['ReportBatchItemFailures']) &&
+    gapSource?.Properties.ScalingConfig?.MaximumConcurrency === 5,
+  gapSource?.Properties,
+);
+const sends = withAction(/^sqs:SendMessage$/);
+check(
+  'aggregate and api may send gap jobs',
+  sends.length === 2 && sends.every((statement) => json(statement.Resource).includes('GapsQueue')),
+  sends,
+);
+
 const outputs = Object.keys(template.toJSON().Outputs ?? {});
 check(
   'outputs for scripts',
@@ -308,6 +349,7 @@ check(
     'UserPoolClientId',
     'ApiUrl',
     'SiteUrl',
+    'GapQueueUrl',
   ].every((name) => outputs.includes(name)),
   outputs,
 );

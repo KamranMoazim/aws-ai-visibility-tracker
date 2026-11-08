@@ -65,6 +65,7 @@ export interface Workspace extends WorkspaceSettings {
   ownerId: string;
   createdAt: string;
   lastManualRunAt?: string;
+  sitemapImport?: PagesView['import'];
 }
 
 export interface Prompt {
@@ -189,6 +190,57 @@ export interface UntrackedBrand {
   lastSeen: string;
 }
 
+export type GapStatus = 'open' | 'dismissed' | 'drafted' | 'failed' | 'pending';
+
+export interface GapBrief {
+  sourcesCover: string[];
+  missingPoints: string[];
+  action: 'improve' | 'new';
+  improveUrl?: string;
+  pageType: string;
+  title: string;
+  outline: { heading: string; points: string[] }[];
+  questions: string[];
+  facts: string[];
+  phrases: string[];
+}
+
+export interface GapSummary {
+  gapId: string;
+  promptId: string;
+  promptText: string;
+  stage: Stage;
+  status: GapStatus;
+  score: number;
+  missingEngines: string[];
+  missingRate: number;
+  neverCited: boolean;
+  title?: string;
+  pageType?: string;
+  action?: 'improve' | 'new';
+  error?: string;
+  updatedAt: string;
+}
+
+export interface Gap extends GapSummary {
+  runId?: string;
+  evidence?: {
+    answers: number;
+    competitors: { name: string; count: number }[];
+    others: { name: string; count: number }[];
+    sources: { url: string; title?: string; count: number }[];
+  };
+  sourcesRead?: { url: string; title?: string; ok: boolean; error?: string }[];
+  ownPages?: { url: string; title?: string }[];
+  brief?: GapBrief;
+}
+
+export interface PagesView {
+  import: { status: string; pages?: number; at: string; error?: string } | null;
+  count: number;
+  pages: { url: string; title?: string }[];
+}
+
 export interface WorkspaceView {
   workspace: Workspace;
   competitors: Competitor[];
@@ -237,6 +289,17 @@ export const api = {
       'GET',
       `${ws(workspaceId)}/prompts/${promptId}/answers${runId ? `?runId=${encodeURIComponent(runId)}` : ''}`,
     ),
+  gaps: (workspaceId: string, status: GapStatus = 'open') =>
+    apiCall<{ gaps: GapSummary[] }>('GET', `${ws(workspaceId)}/gaps?status=${status}`),
+  gap: (workspaceId: string, gapId: string) =>
+    apiCall<{ gap: Gap }>('GET', `${ws(workspaceId)}/gaps/${gapId}`),
+  setGapStatus: (workspaceId: string, gapId: string, action: 'dismiss' | 'reopen') =>
+    apiCall<{ status: GapStatus }>('POST', `${ws(workspaceId)}/gaps/${gapId}/${action}`),
+  findGap: (workspaceId: string, promptId: string) =>
+    apiCall<{ queued: boolean }>('POST', `${ws(workspaceId)}/prompts/${promptId}/gap`),
+  importSitemap: (workspaceId: string) =>
+    apiCall<{ queued: boolean }>('POST', `${ws(workspaceId)}/sitemap/import`),
+  pages: (workspaceId: string) => apiCall<PagesView>('GET', `${ws(workspaceId)}/pages`),
   brands: (workspaceId: string) =>
     apiCall<{ brands: UntrackedBrand[] }>('GET', `${ws(workspaceId)}/brands`),
 };

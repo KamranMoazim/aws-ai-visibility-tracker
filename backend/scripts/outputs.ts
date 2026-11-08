@@ -12,6 +12,7 @@ export interface StackOutputs {
   UserPoolClientId: string;
   ApiUrl: string;
   SiteUrl: string;
+  GapQueueUrl: string;
 }
 
 export function loadOutputs(): StackOutputs {

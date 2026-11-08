@@ -10,6 +10,7 @@ import * as iam from 'aws-cdk-lib/aws-iam';
 import type { NodejsFunction } from 'aws-cdk-lib/aws-lambda-nodejs';
 import * as s3 from 'aws-cdk-lib/aws-s3';
 import * as s3deploy from 'aws-cdk-lib/aws-s3-deployment';
+import type * as sqs from 'aws-cdk-lib/aws-sqs';
 import { Construct } from 'constructs';
 import { grantNovaInvoke } from './bedrock.js';
 import { appFunction, logGroup } from './function.js';
@@ -22,6 +23,7 @@ export const GUIDES_PREFIX = 'guides/';
 export interface WebProps {
   table: dynamodb.ITableV2;
   run: Run;
+  gapQueue: sqs.IQueue;
   clientDistPath: string;
 }
 
@@ -69,12 +71,14 @@ export class Web extends Construct {
         SCHEDULER_ROLE_ARN: props.run.schedulerRole.roleArn,
         USER_POOL_ID: this.userPool.userPoolId,
         USER_POOL_CLIENT_ID: this.userPoolClient.userPoolClientId,
+        GAP_QUEUE_URL: props.gapQueue.queueUrl,
       },
       timeout: Duration.seconds(29),
       memorySize: 512,
     });
     props.table.grantReadWriteData(this.api);
     props.run.stateMachine.grantStartExecution(this.api);
+    props.gapQueue.grantSendMessages(this.api);
     grantNovaInvoke(this, this.api);
     this.api.addToRolePolicy(
       new iam.PolicyStatement({

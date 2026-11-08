@@ -4,6 +4,7 @@ import * as iam from 'aws-cdk-lib/aws-iam';
 import type { NodejsFunction } from 'aws-cdk-lib/aws-lambda-nodejs';
 import * as logs from 'aws-cdk-lib/aws-logs';
 import type * as s3 from 'aws-cdk-lib/aws-s3';
+import type * as sqs from 'aws-cdk-lib/aws-sqs';
 import * as scheduler from 'aws-cdk-lib/aws-scheduler';
 import * as sfn from 'aws-cdk-lib/aws-stepfunctions';
 import * as tasks from 'aws-cdk-lib/aws-stepfunctions-tasks';
@@ -19,6 +20,7 @@ const RETRYABLE_ERROR = 'EngineRetryableError';
 export interface RunProps {
   table: dynamodb.ITableV2;
   rawBucket: s3.IBucket;
+  gapQueue: sqs.IQueue;
   maxCallsPerRun: number;
   openAiModel: string;
 }
@@ -68,7 +70,7 @@ export class Run extends Construct {
     });
     this.aggregate = appFunction(this, 'Aggregate', {
       entry: 'src/run-aggregate/handler.ts',
-      environment,
+      environment: { ...environment, GAP_QUEUE_URL: props.gapQueue.queueUrl },
       timeout: Duration.minutes(5),
       memorySize: 1024,
     });
@@ -77,6 +79,7 @@ export class Run extends Construct {
       props.table.grantReadWriteData(fn);
     }
     props.rawBucket.grantPut(this.ask, 'raw/*');
+    props.gapQueue.grantSendMessages(this.aggregate);
     grantReadKeys(this, this.startRun, keys);
     grantReadKeys(this, this.ask, keys);
     grantNovaInvoke(this, this.ask);
